@@ -1,1 +1,1 @@
-from models import tft_model
+from models.tft_model import Tft

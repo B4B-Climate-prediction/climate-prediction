@@ -13,6 +13,9 @@ from model import Model
 
 class Tft(Model, ABC):
     """Temporal Fusion Transformer model"""
+    name = "Tft"
+
+    add_arguments = lambda parser: print(parser)
 
     def __init__(self, data):
         super().__init__(data)
@@ -25,6 +28,12 @@ class Tft(Model, ABC):
             target = targets[0]
         else:
             target = targets
+
+        for k_cat in kwargs['kncats']:
+            self.data[k_cat] = str(self.data[k_cat])
+
+        for uk_cat in kwargs['uncats']:
+            self.data[uk_cat] = str(self.data[uk_cat])
 
         return TimeSeriesDataSet(
             self.data,
@@ -45,7 +54,7 @@ class Tft(Model, ABC):
             allow_missing_timesteps=True
         )
 
-    def generate_model(self, data, **kwargs):
+    def generate_model(self, dataset, **kwargs):
         targets = kwargs['target']
 
         if len(targets) > 1:
@@ -54,7 +63,7 @@ class Tft(Model, ABC):
             output = kwargs['output_size']
 
         return TemporalFusionTransformer.from_dataset(
-            data,
+            dataset,
             learning_rate=0.01,
             hidden_size=16,
             attention_head_size=1,
@@ -65,10 +74,10 @@ class Tft(Model, ABC):
             reduce_on_plateau_patience=4
         )
 
-    def train_model(self, data, model, **kwargs):
+    def train_model(self, dataset, model, **kwargs):
         early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode='min')
 
-        train_dataloader, val_dataloader = self.create_data_loaders(data, kwargs)
+        train_dataloader, val_dataloader = self.create_data_loaders(dataset, **kwargs)
 
         trainer = Trainer(
             max_epochs=kwargs['epochs'],
@@ -91,14 +100,14 @@ class Tft(Model, ABC):
     def predict(self):
         raise NotImplementedError()
 
-    def tune_hyper_parameter(self, data, **kwargs):  # Add clean up after the creation of the best trial!
+    def tune_hyper_parameter(self, dataset, **kwargs):  # Add clean up after the creation of the best trial!
         """lol"""
-        train_dataloader, val_dataloader = self.create_data_loaders(data, kwargs)
+        train_dataloader, val_dataloader = self.create_data_loaders(dataset, **kwargs)
 
         study = optimize_hyperparameters(
             train_dataloader=train_dataloader,
             val_dataloader=val_dataloader,
-            model_path=kwargs['model'],
+            model_path=Path(__file__) / kwargs['model'],
             max_epochs=kwargs['epochs'],
             n_trials=kwargs['trials']
         )
@@ -120,17 +129,13 @@ class Tft(Model, ABC):
         for i in range(len(x)):
             model.plot_prediction(x, raw_predictions, idx=i, add_loss_to_title=True)
 
-    def create_data_loaders(self, data, **kwargs):
-        validation = TimeSeriesDataSet.from_dataset(data, self.data, predict=True, stop_randomization=True)
+    def create_data_loaders(self, dataset, **kwargs):
+        validation = TimeSeriesDataSet.from_dataset(dataset, self.data, predict=True, stop_randomization=True)
 
-        return data.to_dataloader(train=True, batch_size=kwargs['batch'], num_workers=2,
-                                  shuffle=False), validation.to_dataloader(train=False, batch_size=kwargs['batch'],
+        return dataset.to_dataloader(train=True, batch_size=kwargs['batch'], num_workers=2,
+                                     shuffle=False), validation.to_dataloader(train=False, batch_size=kwargs['batch'],
                                                                            num_workers=2, shuffle=False)
 
+    def load_model(self, **kwargs):
+        return TemporalFusionTransformer.load_from_checkpoint(**kwargs['model'])
 
-def implement_command_args(parser):
-    pass
-
-
-def get_model_name():
-    return "tft"
