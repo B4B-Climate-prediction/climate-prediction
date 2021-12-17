@@ -129,9 +129,7 @@ class Tft(Model, ABC):
 
 
 def implement_command_args(parser):
-    parser.add_argument(get_model_name())
-
-    return parser
+    pass
 
 
 def get_model_name():

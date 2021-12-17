@@ -123,7 +123,8 @@ def parse_args(models):
     )
 
     for model in models:
-        parser = model.implement_command_args(parser)
+        parser.add_argument(model.get_model_name())
+        model.implement_command_args(parser)
 
     return parser.parse_args()
 
@@ -284,8 +285,6 @@ def main(args):
 
 
 if __name__ == '__main__':
-    print(sys.argv)
-
     models = []
 
     for i in range(1, len(sys.argv)):
@@ -314,13 +313,12 @@ if __name__ == '__main__':
 
             Model = getattr(c, name_local)
             model_classes.append(Model)
-            print(f"{name_local} model has been loaded in")
+            print(f"{Model.get_model_name()} model has been loaded in")
 
     loaded_models = []
 
     for m in models:
         for mc in model_classes:
-            print(mc.get_model_name())
             if mc.get_model_name():
 
                 if not loaded_models.__contains__(mc):
