@@ -123,7 +123,7 @@ def parse_args(models):
     )
 
     for model in models:
-        model.implement_command_args()
+        parser = model.implement_command_args(parser)
 
     return parser.parse_args()
 
@@ -320,7 +320,9 @@ if __name__ == '__main__':
 
     for m in models:
         for mc in model_classes:
+            print(mc.get_model_name())
             if mc.get_model_name():
+
                 if not loaded_models.__contains__(mc):
                     loaded_models.append(mc)
 
