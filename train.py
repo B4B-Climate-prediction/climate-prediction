@@ -1,9 +1,15 @@
+import importlib
+import inspect
+import sys
 import wandb
 import pickle, os
 import pandas as pd
-from pathlib import Path
-import matplotlib.pyplot as plt
 from argparse import ArgumentParser
+
+from inspect import isclass
+from pkgutil import iter_modules
+from pathlib import Path
+from importlib import import_module
 
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import WandbLogger
@@ -13,8 +19,12 @@ from pytorch_forecasting.metrics import QuantileLoss, MultiLoss
 from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 
+from models import *
 
-def parse_args():
+model_classes = []
+
+
+def parse_args(models):
     parser = ArgumentParser(add_help=True)
 
     parser.add_argument(
@@ -108,8 +118,12 @@ def parse_args():
         '-tr', '--trials',
         default=100,
         type=int,
-        help='Trials should only be used whenever hypertuning is activated. Trials specifies the amount of trials it will maximally run before coming to the best results. Default: 100'
+        help='Trials should only be used whenever hypertuning is activated. Trials specifies the amount of trials it '
+             'will maximally run before coming to the best results. Default: 100 '
     )
+
+    for model in models:
+        model.implement_command_args()
 
     return parser.parse_args()
 
@@ -121,7 +135,7 @@ def build_timeseries_dataset(data, targets, groups, knreels, kncats, unreels, un
         target = targets
 
     return TimeSeriesDataSet(
-        data, 
+        data,
         target=target,
         time_idx='Index',
         group_ids=groups,
@@ -169,7 +183,8 @@ def build_timeseries_model(data, targets):
         attention_head_size=1,
         dropout=0.1,
         hidden_continuous_size=8,
-        output_size=output, # Onthoudt wel dat deze output_size op basis van de hoeveelheid targets aangepast moet worden.
+        output_size=output,
+        # Onthoudt wel dat deze output_size op basis van de hoeveelheid targets aangepast moet worden.
         loss=QuantileLoss(),
         reduce_on_plateau_patience=4
     )
@@ -178,7 +193,8 @@ def build_timeseries_model(data, targets):
 def split_timeseries_dataset(dataset, df, batch):
     validation = TimeSeriesDataSet.from_dataset(dataset, df, predict=True, stop_randomization=True)
 
-    return dataset.to_dataloader(train=True, batch_size=batch, num_workers=2, shuffle=False), validation.to_dataloader(train=False, batch_size=batch, num_workers=2, shuffle=False)
+    return dataset.to_dataloader(train=True, batch_size=batch, num_workers=2, shuffle=False), validation.to_dataloader(
+        train=False, batch_size=batch, num_workers=2, shuffle=False)
 
 
 def evaluate_model(model, val):
@@ -195,11 +211,11 @@ def main(args):
     logger = None
     if args.wandb is not None:
         team = 'b4b-cp'
-        project='climate-prediction'
-        
+        project = 'climate-prediction'
+
         logger = WandbLogger(project=project)
         os.environ['WANDB_API_KEY'] = args.wandb
-        
+
         wandb.init(project=project, entity=team)
         wandb.login()
 
@@ -214,8 +230,8 @@ def main(args):
 
     # Datasets
     training = build_timeseries_dataset(
-        df, 
-        targets=args.targets, 
+        df,
+        targets=args.targets,
         groups=args.groups,
         knreels=args.knreels,
         kncats=args.kncats,
@@ -224,7 +240,7 @@ def main(args):
     )
 
     # Dataloaders
-    train_dataloader, val_dataloader = split_timeseries_dataset(training, df, args.batch) 
+    train_dataloader, val_dataloader = split_timeseries_dataset(training, df, args.batch)
 
     if args.hyper:
         study = optimize_hyperparameters(
@@ -236,7 +252,7 @@ def main(args):
         )
 
         with open("optimization_summary.pkl", "wb") as fout:
-            pickle.dump(study, fout) #the information from optimization. 
+            pickle.dump(study, fout)  # the information from optimization.
 
         path = args.model + "/trial_" + str(study.best_trial.number)
 
@@ -258,14 +274,54 @@ def main(args):
 
         # Training
         trainer.fit(
-            model, 
+            model,
             train_dataloaders=train_dataloader,
             val_dataloaders=val_dataloader
         )
 
     # Evaluate
     evaluate_model(model, val_dataloader)
-        
+
 
 if __name__ == '__main__':
-    main(parse_args())
+    print(sys.argv)
+
+    models = []
+
+    for i in range(1, len(sys.argv)):
+        arg = sys.argv[i]
+
+        if arg.startswith('-') | arg.startswith('--'):
+            break
+
+        models.append(arg)
+
+    # search models in folder
+
+    package_dir = Path(__file__).parent / 'models'
+
+    for file in iter(os.listdir(package_dir)):
+        c = importlib.import_module(f"{package_dir}")
+
+        if file.startswith("__"):
+            continue
+
+        for name_local in dir(c):
+            # print(name_local)
+            # if inspect.isclass(getattr(c, name_local)):
+            if name_local.startswith("__"):
+                continue
+
+            Model = getattr(c, name_local)
+            model_classes.append(Model)
+            print(f"{name_local} model has been loaded in")
+
+    loaded_models = []
+
+    for m in models:
+        for mc in model_classes:
+            if mc.get_model_name():
+                if not loaded_models.__contains__(mc):
+                    loaded_models.append(mc)
+
+    main(parse_args(loaded_models))

@@ -3,10 +3,11 @@ from typing import Any, List
 
 class Model:
 
-    #Check if it possible to ArgsParser to each class
+    # Check if it possible to ArgsParser to each class
+    # TODO: Check which parameters we want to add to this
 
-    def __init__(self):
-        pass
+    def __init__(self, data):
+        self.data = data
 
     def generate_time_series_dataset(self, data, **kwargs) -> Any:
         raise NotImplementedError()

@@ -12,8 +12,13 @@ from model import Model
 
 
 class Tft(Model, ABC):
+    """Temporal Fusion Transformer model"""
+
+    def __init__(self, data):
+        super().__init__(data)
+
     # Maybe check if possible to move convert
-    def generate_time_series_dataset(self, data, **kwargs):
+    def generate_time_series_dataset(self, **kwargs):
         targets = kwargs['targets']
 
         if len(targets) == 1:
@@ -22,7 +27,7 @@ class Tft(Model, ABC):
             target = targets
 
         return TimeSeriesDataSet(
-            data,
+            self.data,
             target=target,
             time_idx='Index',
             group_ids=kwargs['groups'],
@@ -63,6 +68,8 @@ class Tft(Model, ABC):
     def train_model(self, data, model, **kwargs):
         early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode='min')
 
+        train_dataloader, val_dataloader = self.create_data_loaders(data, kwargs)
+
         trainer = Trainer(
             max_epochs=kwargs['epochs'],
             gpus=0,
@@ -74,8 +81,8 @@ class Tft(Model, ABC):
         )
 
         trainer.fit(model,
-                    # train_dataloaders=,
-                    # val_dataloaders=
+                    train_dataloaders=train_dataloader,
+                    val_dataloaders=val_dataloader
                     )
 
         return trainer  # should return something that is obtainable by wandb!
@@ -84,10 +91,13 @@ class Tft(Model, ABC):
     def predict(self):
         raise NotImplementedError()
 
-    def tune_hyper_parameter(self, **kwargs):  # Add clean up after the creation of the best trial!
+    def tune_hyper_parameter(self, data, **kwargs):  # Add clean up after the creation of the best trial!
+        """lol"""
+        train_dataloader, val_dataloader = self.create_data_loaders(data, kwargs)
+
         study = optimize_hyperparameters(
-            # train_dataloader=train_dataloader,
-            # val_dataloader=val_dataloader,
+            train_dataloader=train_dataloader,
+            val_dataloader=val_dataloader,
             model_path=kwargs['model'],
             max_epochs=kwargs['epochs'],
             n_trials=kwargs['trials']
@@ -110,3 +120,17 @@ class Tft(Model, ABC):
         for i in range(len(x)):
             model.plot_prediction(x, raw_predictions, idx=i, add_loss_to_title=True)
 
+    def create_data_loaders(self, data, **kwargs):
+        validation = TimeSeriesDataSet.from_dataset(data, self.data, predict=True, stop_randomization=True)
+
+        return data.to_dataloader(train=True, batch_size=kwargs['batch'], num_workers=2,
+                                  shuffle=False), validation.to_dataloader(train=False, batch_size=kwargs['batch'],
+                                                                           num_workers=2, shuffle=False)
+
+
+def implement_command_args(parser):
+    pass
+
+
+def get_model_name():
+    return "tft"
