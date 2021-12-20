@@ -10,6 +10,21 @@ model_classes = []
 
 
 def parse_args(models):
+    """
+    Parse the arguments from the command using argparse
+
+    This method also takes in the arguments from the models being used by the command
+
+    arguments:
+
+    -d [--DATA]: Filepath to data source
+    -t [--TARGETS]: columns of the data that need to be predicted
+    -g [--GROUPS]: groups in datasets
+    -kr [--KNREELS]: Known reels features in dataset (Also known in the future). Default: []
+
+
+
+    """
     parser = ArgumentParser(add_help=True)
 
     parser.add_argument(
