@@ -1,3 +1,13 @@
+"""
+A convert file that converts the existing dataset to a dataset that the other script can use.
+
+Command-arguments:
+    -d [--DATA]: Data filepath, must be a .csv file.
+    -t [--TIMESTAMP]: The column which contains the timestamps
+    -r [--RESAMPLE]: Resample the duration. Default: Min For all options see: https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.resample.html
+    -n [--NAME]: Name of the exported file
+"""
+
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
@@ -5,6 +15,12 @@ from argparse import ArgumentParser
 
 
 def parse_args():
+    """
+    Parse the arguments from the command using argparse
+
+    :return: argument-parser
+    """
+
     parser = ArgumentParser(add_help=True)
 
     parser.add_argument(
@@ -38,6 +54,15 @@ def parse_args():
 
 
 def main(args):
+    """
+    The main method that runs whenever the file is being used.
+
+    :param args: the arguments in the command
+
+    It resamples the timestamps and generates indexes.
+
+    :return: dataset as csv file.
+    """
     df = pd.read_csv(args.data, parse_dates=['Timestamp'])
     
     df['Timestamp'] = df[args.timestamp]
