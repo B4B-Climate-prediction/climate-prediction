@@ -1,20 +1,15 @@
-import pickle, os
+import importlib
+import inspect
+import sys
+
 import pandas as pd
 from pathlib import Path
-import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
-from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks import EarlyStopping
-
-from pytorch_forecasting.metrics import QuantileLoss, MultiLoss
-from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer
-from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
-from pandas.tseries.offsets import DateOffset
-import ast
+model_classes = []
 
 
-def parse_args():
+def parse_args(models):
     parser = ArgumentParser(add_help=True)
 
     parser.add_argument(
@@ -101,103 +96,72 @@ def parse_args():
         help='Specify the timeunit difference between rows. Default: [10, minutes]'
     )
 
+    for model in models:
+        parser.add_argument(model.name)
+        model.add_arguments(parser)
+
     return parser.parse_args()
 
-def build_timeseries_dataset(data, targets, groups, knreels, kncats, unreels, uncats):
-    if len(targets) == 1:
-        target = targets[0]
-    else:
-        target = targets
 
-    print(target)
-    
-    return TimeSeriesDataSet(
-        data, 
-        target=target,
-        time_idx='Index',
-        group_ids=groups,
-        min_encoder_length=0,
-        max_encoder_length=27,
-        min_prediction_length=6,
-        max_prediction_length=6,
-        time_varying_known_categoricals=kncats,
-        time_varying_known_reals=knreels,
-        time_varying_unknown_categoricals=uncats,
-        time_varying_unknown_reals=unreels,
-        add_relative_time_idx=True,
-        add_target_scales=True,
-        add_encoder_length=True,
-        allow_missing_timesteps=True,
-        predict_mode=True
-    )
-
-def main(args):
+def main(args, chosen_models):
     print(args)
 
     path = str(Path(__file__).parent / 'out' / 'datasets' / args.data)
     df = pd.read_csv(path)
 
-    for k_cat in args.kncats:
-        df[k_cat] = str(df[k_cat])
+    for model in chosen_models:
+        model_class = model(df)
 
-    for uk_cat in args.uncats:
-        df[uk_cat] = str(df[uk_cat])
+        dataset = model_class.generate_time_series_dataset(**vars(args))
 
-    df[args.Timestamp] = pd.to_datetime(df[args.Timestamp])
+        trained_model = model_class.load_model(**vars(args))
 
-    dataset = build_timeseries_dataset(
-        df, 
-        targets=args.targets, 
-        groups=args.groups,
-        knreels=args.knreels,
-        kncats=args.kncats,
-        unreels=args.unreels,
-        uncats=args.uncats
-    )
+        predictions = model_class.predict(trained_model, dataset, **vars(args))
 
-    data_loader = dataset.to_dataloader(train=False, batch_size=args.batch, num_workers=2, shuffle=False)
+        print(predictions)
 
-    #init model
-    model = TemporalFusionTransformer.load_from_checkpoint(args.model)
-
-    encoder_data = df[lambda x: x.Index > x.Index.max() - 27]
-
-    # select last known data point and create decoder data from it by repeating it and incrementing the month
-    # in a real world dataset, we should not just forward fill the covariates but specify them to account
-    # for changes in special days and prices (which you absolutely should do but we are too lazy here)
-    last_data = df[lambda x: x.index == x.index.max()]
-    decoder_data = pd.concat([last_data.assign(Timestamp=lambda x: x[args.Timestamp] + DateOffset(ast.parse('{args.timeunit[1]}={(int(args.timeunit[0])}'))) for i in range(1, args.timesteps + 1)],ignore_index=True)
-
-    # add time index consistent with "data"
-    decoder_data["Index"] += encoder_data["Index"].max() + decoder_data.index + 1 - decoder_data["Index"].min()
-
-    print(decoder_data)
-
-    # combine encoder and decoder data
-    new_prediction_data = pd.concat([encoder_data, decoder_data], ignore_index=True)
-    
-    print(new_prediction_data)
-
-    raw_predictions, x = model.predict(new_prediction_data, return_x=True)
-    
-    print(x)
-    #for i in range(len(raw_predictions)):
-    # model.plot_prediction(x, raw_predictions, idx=0, plot_attention=False, show_future_observed=False)
-    # plt.plot()
-    # path = str(Path(__file__).parent / 'out' / 'pictures' / 'prediction.png')
-    # plt.savefig(path)        
 
 if __name__ == '__main__':
-    main(parse_args())
+    models = []
 
+    for i in range(1, len(sys.argv)):
+        arg = sys.argv[i]
 
-    #TODO:
+        if arg.startswith('-') | arg.startswith('--'):
+            break
+
+        models.append(arg)
+
+    # search models in folder
+    package_dir = Path(__file__).parent / 'models'
+
+    c = importlib.import_module(f"{package_dir}")
+
+    for name_local in dir(c):
+        print(name_local)
+        if inspect.isclass(getattr(c, name_local)):
+            Model = getattr(c, name_local)
+            model_classes.append(Model)
+            print(f"{Model.name} model has been loaded in")
+
+    loaded_models = []
+
+    for m in models:
+        for mc in model_classes:
+            if mc.name:
+                if not loaded_models.__contains__(mc):
+                    loaded_models.append(mc)
+
+    main(parse_args(loaded_models), loaded_models)
+
+    # TODO:
     # -Let the user predict X amount of time-units into the future (see bullet point 5)
     # -Discuss what kind of output / prediction we want
 
-    # -Specify Timestep
+    # -Specify Timestep (Bryan)
     # -Specify which is the date column
     # -Figure out why it only predicts 6 timesteps
     # -Move specified column to convert
     # -Generate metadata file for algoritme
     # -Make index more time-based (this will increase accuracy by a lot)
+    # -Look into WANDB

@@ -1,8 +1,11 @@
+import ast
 import os
 import pickle
+import pandas as pd
 from abc import ABC
 from pathlib import Path
 
+from pandas import DateOffset
 from pytorch_forecasting import TemporalFusionTransformer, QuantileLoss, TimeSeriesDataSet
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 from pytorch_lightning import Trainer
@@ -86,7 +89,7 @@ class Tft(Model, ABC):
             limit_train_batches=50,
             callbacks=[early_stop_callback],
             weights_save_path=str(Path(__file__).parent / 'out' / 'models'),
-            #logger=kwargs['logger'] WANDB
+            # logger=kwargs['logger'] WANDB
         )
 
         trainer.fit(created_model,
@@ -96,9 +99,24 @@ class Tft(Model, ABC):
 
         return trainer  # should return something that is obtainable by wandb!
 
-    # TODO
-    def predict(self):
-        raise NotImplementedError()
+    def predict(self, model, data, **kwargs):
+        encoder_data = self.data[lambda y: y.Index > y.Index.max() - 27]
+
+        # select last known data point and create decoder data from it by repeating it and incrementing the month
+        # in a real world dataset, we should not just forward fill the covariates but specify them to account
+        # for changes in special days and prices (which you absolutely should do but we are too lazy here)
+        last_data = self.data[lambda y: y.index == y.index.max()]
+        decoder_data = pd.concat([last_data.assign(
+            Timestamp=lambda y: y['Timestamp'] + DateOffset(ast.parse(f'{kwargs["timeunit"][1]}={(int(kwargs["timeunit"][0]))}')))
+                                  for i in range(1, kwargs['timesteps'] + 1)], ignore_index=True)
+
+        # add time index consistent with "data"
+        decoder_data["Index"] += encoder_data["Index"].max() + decoder_data.index + 1 - decoder_data["Index"].min()
+
+        # combine encoder and decoder data
+        new_prediction_data = pd.concat([encoder_data, decoder_data], ignore_index=True)
+
+        return model.predict(new_prediction_data)
 
     def tune_hyper_parameter(self, dataset, **kwargs):  # Add clean up after the creation of the best trial!
         """lol"""
@@ -123,8 +141,10 @@ class Tft(Model, ABC):
         # SHOULD RETURN THE BEST TRIAL! IF THIS FUNCTION IS AVAILABLE!
         return TemporalFusionTransformer.load_from_checkpoint(path + "/" + files[len(files) - 1])
 
-    def evaluate_model(self, model, validation):
-        raw_predictions, x = model.predict(validation, mode="raw", return_x=True)
+    def evaluate_model(self, model, dataset, **kwargs):
+        _, validation_data_loader = self.create_data_loaders(dataset, **kwargs)
+
+        raw_predictions, x = model.predict(validation_data_loader, mode="raw", return_x=True)
 
         for i in range(len(x)):
             model.plot_prediction(x, raw_predictions, idx=i, add_loss_to_title=True)
@@ -134,8 +154,7 @@ class Tft(Model, ABC):
 
         return dataset.to_dataloader(train=True, batch_size=kwargs['batch'], num_workers=2,
                                      shuffle=False), validation.to_dataloader(train=False, batch_size=kwargs['batch'],
-                                                                           num_workers=2, shuffle=False)
+                                                                              num_workers=2, shuffle=False)
 
     def load_model(self, **kwargs):
         return TemporalFusionTransformer.load_from_checkpoint(Path(__file__).parent / kwargs['model'])
-
