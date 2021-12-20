@@ -1,5 +1,6 @@
 import pandas as pd
 from pathlib import Path
+import os
 from datetime import datetime
 from argparse import ArgumentParser
 
@@ -38,13 +39,13 @@ def parse_args():
 
 
 def main(args):
-    df = pd.read_csv(args.data, parse_dates=['Timestamp'])
-    
-    df['Timestamp'] = df[args.timestamp]
-    del df[args.timestamp]
+    df = pd.read_csv(args.data, parse_dates=[args.timestamp])
 
-    df.sort_values(by='Timestamp', inplace=True)
-    df = df.resample(args.resample, on='Timestamp').median()
+    default_timestamp = 'Timestamp'
+    df = df.rename(columns={args.timestamp: default_timestamp})
+
+    df.sort_values(by=default_timestamp, inplace=True)
+    df = df.resample(args.resample, on=default_timestamp).median()
     df = df.reset_index()
     df.dropna(inplace=True)
     df['Index'] = df.index
@@ -53,8 +54,8 @@ def main(args):
     if name is None:
         time = datetime.now().strftime('%H%M%S')
         name = f'{time}-{args.resample}'
-    
-    path = str(Path(__file__).parent / 'out' / 'datasets' / f'{name}.csv')
+
+    path = os.path.join('out/datasets', f'{name}.csv')
     df.to_csv(path, index=False)
 
 
