@@ -207,10 +207,10 @@ class Tft(Model, ABC):
                                      shuffle=False), validation.to_dataloader(train=False, batch_size=kwargs['batch'],
                                                                               num_workers=2, shuffle=False)
 
-    def load_model(self, **kwargs):
+    def load_model(self, path, **kwargs):
         """
         Load in TemporalFusionTransformer
 
         :return: TemporalFusionTransformer
         """
-        return TemporalFusionTransformer.load_from_checkpoint(Path(__file__).parent / kwargs['model'])
+        return TemporalFusionTransformer.load_from_checkpoint(Path(__file__).parent / path)

@@ -9,7 +9,7 @@ command-arguments:
     -kc [--KNCATS]: Known categorical features in dataset (also know in the future). Default: []
     -ur [--UNREELS]: Unknown reel features in dataset. Default: []
     -uc [--UNCATS]: Unknown categorical features in dataset. Default: []
-    -m [--MODEL]: Model file path, must be a file.
+    -m [--MODEL]: Model file paths, must be a file.
     -ts [--TIMESTEPS]: The amount of timesteps into the future you predict. Default: 10
     -tu [--TIMEUNIT]: Specify the timeunit difference between rows. Default: [10, min]
 
@@ -96,7 +96,7 @@ def parse_args(models):
         '-m', '--model',
         required=True,
         type=str,
-        help='Model file path, must be a (.?) file.'
+        help='Model file paths, must be a (.?) file.'
     )
 
     parser.add_argument(
@@ -140,12 +140,16 @@ def main(args, chosen_models):
     path = str(Path(__file__).parent / 'out' / 'datasets' / args.data)
     df = pd.read_csv(path)
 
+    index = 0  # Maybe improve with metadata file!
+
     for model in chosen_models:
         model_class = model(df)
 
-        trained_model = model_class.load_model(**vars(args))
+        trained_model = model_class.load_model(args['model'][index])
 
         predictions = model_class.predict(trained_model, **vars(args))
+
+        index += 1
 
         print(predictions)
 

@@ -10,7 +10,7 @@ Command-arguments:
     -kc [--KNCATS]: Known categorical features in dataset (also know in the future). Default: []
     -ur [--UNREELS]: Unknown reel features in dataset. Default: []
     -uc [--UNCATS]: Unknown categorical features in dataset. Default: []
-    -m [--MODEL]: Model file path, must be a file. If specified it will continue training that model.
+    -m [--MODEL]: Model file paths, must be a file. If specified it will continue training that model.
     -hy [--HYPER]: hypertunes the model if specified, this will take a long time.
     -e [--EPOCHS]: Amount of epochs to train. Default: 100
     -b [--BATCH]: Batch size during training. Default: 128
@@ -106,8 +106,10 @@ def parse_args(models):
 
     parser.add_argument(
         '-m', '--model',
-        type=str,
-        help='Model file path, must be a (.?) file. If specified this model will be trained'
+        action='extend',
+        nargs='*',
+        default=[],
+        help='Model file paths, must be a (.?) file. If specified this model will be trained'
     )
 
     parser.add_argument(
@@ -187,6 +189,8 @@ def main(args, chosen_models):
 
     created_models = []
 
+    index = 0  # Maybe improve with metadata files
+
     for model in chosen_models:
         model_class = model(df)
 
@@ -201,12 +205,13 @@ def main(args, chosen_models):
             if args.model is None:
                 untrained_model = model_class.generate_model(training, **vars(args))
             else:
-                untrained_model = model_class.load_model(**vars(args))
+                untrained_model = model_class.load_model(args['model'][index])
 
             trained_model = model_class.train_model(training, untrained_model, **vars(args))
 
         # TODO: Maybe look into WandB
         model_class.evaluate_model(trained_model, training, **vars(args))
+        index += 1
 
 
 if __name__ == '__main__':
