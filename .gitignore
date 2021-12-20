@@ -2,3 +2,4 @@
 .vscode/
 .ipynb_checkpoints/
 __pycache__/
+datasets/out/*.csv
