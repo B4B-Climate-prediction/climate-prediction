@@ -194,6 +194,8 @@ def main(args, chosen_models):
     for model in chosen_models:
         model_class = model(df)
 
+        print(model_class.name)
+
         created_models.append(model_class)
 
         training = model_class.generate_time_series_dataset(**vars(args))
@@ -202,7 +204,7 @@ def main(args, chosen_models):
             trained_model = model_class.tune_hyper_parameter(training, **vars(args))
 
         else:
-            if args.model is None:
+            if len(args.model) == 0:
                 untrained_model = model_class.generate_model(training, **vars(args))
             else:
                 untrained_model = model_class.load_model(args['model'][index])
@@ -241,7 +243,8 @@ if __name__ == '__main__':
 
     for m in models:
         for mc in model_classes:
-            if mc.name:
+            if mc.name == m:
+                print(mc.name)
                 if not loaded_models.__contains__(mc):
                     loaded_models.append(mc)
 
