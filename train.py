@@ -5,6 +5,7 @@ import wandb
 import os
 import pandas as pd
 from argparse import ArgumentParser
+from datetime import datetime
 
 from pathlib import Path
 
@@ -118,6 +119,30 @@ def parse_args(models):
     return parser.parse_args()
 
 
+def export_metadata(model_name, args):
+    # Retrieve dataset
+    path = str(Path(__file__).parent / args.data)
+    df = pd.read_csv(path)
+
+    # Get columns names from dataset
+    column_names = list(df.columns.values)
+
+    metadata = [model_name, args.data, args.targets, column_names]
+
+    # Create name for metadata file
+    time = datetime.now().strftime('%H%M%S')
+    name = f'metadata-{time}-{args.epochs}.txt'
+
+    export_path = os.path.join('./metadata', name)
+
+    f = open(export_path, 'w+')
+
+    for meta in metadata:
+        f.write(str(meta) + '\n')
+
+    f.close()
+
+
 def main(args, chosen_models):
     print(f'{args=}')
 
@@ -155,6 +180,8 @@ def main(args, chosen_models):
 
             trained_model = model_class.train_model(training, untrained_model, **vars(args))
 
+        export_metadata(model_class.name, args)
+
         # TODO: Maybe look into wandb
         model_class.evaluate_model(trained_model, training, **vars(args))
 
@@ -191,3 +218,7 @@ if __name__ == '__main__':
                     loaded_models.append(mc)
 
     main(parse_args(loaded_models), loaded_models)
+
+# Check names of the loaded models with the corresponding folder
+# Load metadata into train.py and predict.py for checking
+# Checking the folder that contains the trained model/weights .cktp
