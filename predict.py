@@ -1,3 +1,20 @@
+"""
+A prediction file that can use multiple models for predicting the forecasting
+
+command-arguments:
+    -d [--DATA]: Filepath to data source
+    -t [--TARGETS]: columns of the data that need to be predicted
+    -g [--GROUPS]: groups in datasets
+    -kr [--KNREELS]: Known reels features in dataset (Also known in the future). Default: []
+    -kc [--KNCATS]: Known categorical features in dataset (also know in the future). Default: []
+    -ur [--UNREELS]: Unknown reel features in dataset. Default: []
+    -uc [--UNCATS]: Unknown categorical features in dataset. Default: []
+    -m [--MODEL]: Model file path, must be a file.
+    -ts [--TIMESTEPS]: The amount of timesteps into the future you predict. Default: 10
+    -tu [--TIMEUNIT]: Specify the timeunit difference between rows. Default: [10, min]
+
+"""
+
 import importlib
 import inspect
 import sys
@@ -10,6 +27,14 @@ model_classes = []
 
 
 def parse_args(models):
+    """
+    Parse the arguments from the command using argparse
+
+    :param models: the models being used by the command
+
+    :return: argument-parser
+    """
+
     parser = ArgumentParser(add_help=True)
 
     parser.add_argument(
@@ -71,14 +96,7 @@ def parse_args(models):
         '-m', '--model',
         required=True,
         type=str,
-        help='Model file path, must be a (.?) file. If specified this model will be trained'
-    )
-
-    parser.add_argument(
-        '-b', '--batch',
-        default=128,
-        type=int,
-        help='Batch size during training. Default: 128'
+        help='Model file path, must be a (.?) file.'
     )
 
     parser.add_argument(
@@ -90,8 +108,9 @@ def parse_args(models):
 
     parser.add_argument(
         '-tu', '--timeunit',
-        default=['10', 'minutes'],
-        type=[],
+        action='extend',
+        default=['10', 'min'],
+        nargs='*',
         required=True,
         help='Specify the timeunit difference between rows. Default: [10, minutes]'
     )
@@ -104,7 +123,19 @@ def parse_args(models):
 
 
 def main(args, chosen_models):
-    print(args)
+    """
+    The main method that runs whenever the file is being used.
+
+    :param args: the arguments in the command.
+    :param chosen_models: the models have been specified in the command
+
+    This method loops through the chosen models and executes
+
+    Model.load_model
+    Model.predict
+
+    :return: Nothing
+    """
 
     path = str(Path(__file__).parent / 'out' / 'datasets' / args.data)
     df = pd.read_csv(path)
@@ -112,16 +143,15 @@ def main(args, chosen_models):
     for model in chosen_models:
         model_class = model(df)
 
-        dataset = model_class.generate_time_series_dataset(**vars(args))
-
         trained_model = model_class.load_model(**vars(args))
 
-        predictions = model_class.predict(trained_model, dataset, **vars(args))
+        predictions = model_class.predict(trained_model, **vars(args))
 
         print(predictions)
 
 
 if __name__ == '__main__':
+
     models = []
 
     for i in range(1, len(sys.argv)):
@@ -138,7 +168,6 @@ if __name__ == '__main__':
     c = importlib.import_module(f"{package_dir}")
 
     for name_local in dir(c):
-        print(name_local)
         if inspect.isclass(getattr(c, name_local)):
             Model = getattr(c, name_local)
             model_classes.append(Model)
