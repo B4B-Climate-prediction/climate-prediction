@@ -199,3 +199,5 @@ if __name__ == '__main__':
     # -Specify which is the date column
     # -Figure out why it only predicts 6 timesteps
     # -Move specified column to convert
+    # -Generate metadata file for algoritme
+    # -Make index more time-based (this will increase accuracy by a lot)

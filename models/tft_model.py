@@ -15,7 +15,7 @@ class Tft(Model, ABC):
     """Temporal Fusion Transformer model"""
     name = "Tft"
 
-    add_arguments = lambda parser: print(parser)
+    add_arguments = lambda parser: [print(parser)]
 
     def __init__(self, data):
         super().__init__(data)
@@ -55,12 +55,12 @@ class Tft(Model, ABC):
         )
 
     def generate_model(self, dataset, **kwargs):
-        targets = kwargs['target']
+        targets = kwargs['targets']
 
         if len(targets) > 1:
-            output = [kwargs['output_size'] for _ in targets]
+            output = [7 for _ in targets]
         else:
-            output = kwargs['output_size']
+            output = 7
 
         return TemporalFusionTransformer.from_dataset(
             dataset,
@@ -74,7 +74,7 @@ class Tft(Model, ABC):
             reduce_on_plateau_patience=4
         )
 
-    def train_model(self, dataset, model, **kwargs):
+    def train_model(self, dataset, created_model, **kwargs):
         early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode='min')
 
         train_dataloader, val_dataloader = self.create_data_loaders(dataset, **kwargs)
@@ -86,10 +86,10 @@ class Tft(Model, ABC):
             limit_train_batches=50,
             callbacks=[early_stop_callback],
             weights_save_path=str(Path(__file__).parent / 'out' / 'models'),
-            logger=kwargs['logger']
+            #logger=kwargs['logger'] WANDB
         )
 
-        trainer.fit(model,
+        trainer.fit(created_model,
                     train_dataloaders=train_dataloader,
                     val_dataloaders=val_dataloader
                     )
@@ -137,5 +137,5 @@ class Tft(Model, ABC):
                                                                            num_workers=2, shuffle=False)
 
     def load_model(self, **kwargs):
-        return TemporalFusionTransformer.load_from_checkpoint(**kwargs['model'])
+        return TemporalFusionTransformer.load_from_checkpoint(Path(__file__).parent / kwargs['model'])
 

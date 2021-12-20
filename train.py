@@ -2,24 +2,13 @@ import importlib
 import inspect
 import sys
 import wandb
-import pickle, os
+import os
 import pandas as pd
 from argparse import ArgumentParser
 
-from inspect import isclass
-from pkgutil import iter_modules
 from pathlib import Path
-from importlib import import_module
 
-from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import WandbLogger
-from pytorch_lightning.callbacks import EarlyStopping
-
-from pytorch_forecasting.metrics import QuantileLoss, MultiLoss
-from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer
-from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
-
-from models import *
 
 model_classes = []
 
@@ -160,13 +149,13 @@ def main(args, chosen_models):
 
         else:
             if args.model is None:
-                untrained_model = model_class.generate_model(training,  **vars(args))
+                untrained_model = model_class.generate_model(training, **vars(args))
             else:
                 untrained_model = model_class.load_model(**vars(args))
 
             trained_model = model_class.train_model(training, untrained_model, **vars(args))
 
-        #TODO: Maybe look into wandb
+        # TODO: Maybe look into wandb
         model_class.evaluate_model(trained_model, training, **vars(args))
 
 
@@ -182,31 +171,22 @@ if __name__ == '__main__':
         models.append(arg)
 
     # search models in folder
-
     package_dir = Path(__file__).parent / 'models'
 
-    for file in iter(os.listdir(package_dir)):
-        c = importlib.import_module(f"{package_dir}")
+    c = importlib.import_module(f"{package_dir}")
 
-        if file.startswith("__"):
-            continue
-
-        for name_local in dir(c):
-            print(name_local)
-            if inspect.isclass(getattr(c, name_local)):
-                if name_local.startswith("__"):
-                    continue
-
-                Model = getattr(c, name_local)
-                model_classes.append(Model)
-                print(f"{Model.name} model has been loaded in")
+    for name_local in dir(c):
+        print(name_local)
+        if inspect.isclass(getattr(c, name_local)):
+            Model = getattr(c, name_local)
+            model_classes.append(Model)
+            print(f"{Model.name} model has been loaded in")
 
     loaded_models = []
 
     for m in models:
         for mc in model_classes:
             if mc.name:
-
                 if not loaded_models.__contains__(mc):
                     loaded_models.append(mc)
 
