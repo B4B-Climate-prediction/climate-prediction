@@ -124,6 +124,12 @@ def parse_args():
 
 
 def read_metadata(file):
+    """
+    Reads the metadata file that was generated when the model was trained
+
+    :param file: location of the file
+    :return: [model_name, model_id, data_source, targets, column_names]
+    """
     f = open(file, 'r+')
 
     lines = f.readlines()
@@ -132,12 +138,25 @@ def read_metadata(file):
 
 
 def find_model(name):
+    """
+    Finds the model based on name. If none exists it will return None
+
+    :param name: model_name
+    :return:
+    """
     for model in model_classes:
         if str(model.name) == str(name):
             return model
 
 
 def check_compatability(df, metadata):
+    """
+    Checks whether or not the model is can be used to predict a forecast based on the data that was provided
+
+    :param df: Dataframe that is loaded in for predicting or training
+    :param metadata: metadata that was generated for model
+    :return: Boolean, [missing_columns]
+    """
     columns = list(df.columns.values)
 
     missing_columns = []
@@ -231,7 +250,7 @@ if __name__ == '__main__':
             model_classes.append(Model)
             print(f"{Model.name} model has been loaded in")
 
-    main(parse_args(), models)
+    main(parse_args())
 
     # TODO:
     # -Let the user predict X amount of time-units into the future (see bullet point 5)

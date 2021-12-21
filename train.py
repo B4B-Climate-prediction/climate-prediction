@@ -151,6 +151,16 @@ def parse_args():
 
 
 def export_metadata(model_name, model_id, args, pl):
+    """
+    Generation of metadata file for the models
+
+    :param model_name: name of the model
+    :param model_id: model id
+    :param args: arguments from command
+    :param pl: saving_path
+    :return: [model_name, id, data_source, targets, column_name]
+    """
+
     # Retrieve dataset
     path = str(Path(__file__).parent / args.data)
     df = pd.read_csv(path)
@@ -175,6 +185,12 @@ def export_metadata(model_name, model_id, args, pl):
 
 
 def read_metadata(file):
+    """
+   Reads the metadata file that was generated when the model was trained
+
+   :param file: location of the file
+   :return: [model_name, model_id, data_source, targets, column_names]
+   """
     f = open(file, 'r+')
 
     lines = f.readlines()
@@ -183,12 +199,25 @@ def read_metadata(file):
 
 
 def find_model(name):
+    """
+    Finds the model based on name. If none exists it will return None
+
+    :param name: model_name
+    :return:
+    """
     for model in model_classes:
         if str(model.name) == str(name):
             return model
 
 
 def check_compatability(df, metadata):
+    """
+    Checks whether or not the model is can be used to predict a forecast based on the data that was provided
+
+    :param df: Dataframe that is loaded in for predicting or training
+    :param metadata: metadata that was generated for model
+    :return: Boolean, [missing_columns]
+    """
     columns = list(df.columns.values)
 
     missing_columns = []
@@ -284,7 +313,7 @@ def main(args, chosen_models):
 
                 trained_model = model.train_model(training, trained_model, **vars(args))
 
-                #model.evaluate_model(trained_model, training, **vars(args))
+                # model.evaluate_model(trained_model, training, **vars(args))
 
     else:
         for name in chosen_models:
@@ -304,7 +333,8 @@ def main(args, chosen_models):
 
                     trained_model = model_class.train_model(training, c_model, **vars(args))
 
-                export_metadata(name, model_id, args, (Path(__file__).parent / 'out' / 'models' / f'{name}' / f'{model_id}' / 'checkpoints'))
+                export_metadata(name, model_id, args,
+                                (Path(__file__).parent / 'out' / 'models' / f'{name}' / f'{model_id}' / 'checkpoints'))
 
                 model_class.evaluate_model(trained_model, **vars(args))
             else:
