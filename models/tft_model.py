@@ -5,6 +5,7 @@ import pandas as pd
 from abc import ABC
 from pathlib import Path
 
+import torch
 from pandas import DateOffset
 from pytorch_forecasting import TemporalFusionTransformer, QuantileLoss, TimeSeriesDataSet
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
@@ -83,12 +84,13 @@ class Tft(Model, ABC):
         train_dataloader, val_dataloader = self.create_data_loaders(dataset, **kwargs)
 
         trainer = Trainer(
+            logger=False,
             max_epochs=kwargs['epochs'],
             gpus=0,
             gradient_clip_val=0.15,
             limit_train_batches=50,
-            callbacks=[early_stop_callback],
-            weights_save_path=str(Path(__file__).parent / 'out' / 'models'),
+            callbacks=[],
+            weights_save_path=str(Path(__file__).parent.parent / 'out' / 'models' / 'tft' / 'ID!'),
             # logger=kwargs['logger'] WANDB
         )
 
@@ -96,6 +98,8 @@ class Tft(Model, ABC):
                     train_dataloaders=train_dataloader,
                     val_dataloaders=val_dataloader
                     )
+
+        #torch.save(created_model.state_dict(), os.path.join(Path(__file__).parent.parent / 'out' / 'models' / 'tft', 'weights.ckpt'))
 
         return trainer  # should return something that is obtainable by wandb!
 

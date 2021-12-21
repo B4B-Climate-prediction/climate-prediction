@@ -6,8 +6,9 @@ class Model:
     # Check if it possible to ArgsParser to each class
     # TODO: Check which parameters we want to add to this
 
-    def __init__(self, data):
+    def __init__(self, id, data):
         self.data = data
+        self.id = id
 
     def generate_time_series_dataset(self, data, **kwargs) -> Any:
         raise NotImplementedError()

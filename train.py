@@ -14,7 +14,7 @@ from pytorch_lightning.loggers import WandbLogger
 model_classes = []
 
 
-def parse_args(models):
+def parse_args():
     parser = ArgumentParser(add_help=True)
 
     parser.add_argument(
@@ -80,7 +80,9 @@ def parse_args(models):
 
     parser.add_argument(
         '-m', '--model',
-        type=str,
+        action='extend',
+        nargs='*',
+        default=[],
         help='Model file path, must be a (.?) file. If specified this model will be trained'
     )
 
@@ -112,14 +114,14 @@ def parse_args(models):
              'will maximally run before coming to the best results. Default: 100 '
     )
 
-    for model in models:
+    for model in model_classes:
         parser.add_argument(model.name)
         model.add_arguments(parser)
 
     return parser.parse_args()
 
 
-def export_metadata(model_name, args):
+def export_metadata(model_name, id, args):
     # Retrieve dataset
     path = str(Path(__file__).parent / args.data)
     df = pd.read_csv(path)
@@ -127,7 +129,7 @@ def export_metadata(model_name, args):
     # Get columns names from dataset
     column_names = list(df.columns.values)
 
-    metadata = [model_name, args.data, args.targets, column_names]
+    metadata = [id, model_name, args.data, args.targets, column_names]
 
     # Create name for metadata file
     time = datetime.now().strftime('%H%M%S')
@@ -143,9 +145,21 @@ def export_metadata(model_name, args):
     f.close()
 
 
-def main(args, chosen_models):
-    print(f'{args=}')
+def read_metadata(file):
+    f = open(file, 'r+')
 
+    lines = f.readlines()
+
+    print(lines)
+
+
+def find_model(name):
+    for model in model_classes:
+        if model.name == name:
+            return model
+
+
+def main(args):
     logger = None
     if args.wandb is not None:
         team = 'b4b-cp'
@@ -160,30 +174,38 @@ def main(args, chosen_models):
     path = str(Path(__file__).parent / args.data)
     df = pd.read_csv(path)
 
-    created_models = []
+    if len(args.model) != 0:
+        for model_dir in args.model:
+            #print(Path(os.path.abspath(__file__)).parent / model_dir)
+            print(os.path.join(Path(os.path.dirname(os.path.abspath(__file__))), model_dir))
+            for file in os.listdir(os.path.join(os.path.dirname(__file__), model_dir)):
+                #print(file)
+                if file.endswith('.txt') & file.startswith('metadata'):
+                    read_metadata(file)
+                else:
+                    weights_file = file
 
-    for model in chosen_models:
-        model_class = model(df)
+            # model = find_model()
 
-        created_models.append(model_class)
+            # model_class = model(df)
+            #
+            # training = model_class.generate_time_series_dataset(**vars(args))
+            #
+            # if args.hyper:
+            #     trained_model = model_class.tune_hyper_parameter(training, **vars(args))
+            #
+            # else:
+            #     if args.model is None:
+            #         untrained_model = model_class.generate_model(training, **vars(args))
+            #     else:
+            #         untrained_model = model_class.load_model(**vars(args))
+            #
+            #     trained_model = model_class.train_model(training, untrained_model, **vars(args))
+            #
+            # export_metadata(0, model_class.name, args)
 
-        training = model_class.generate_time_series_dataset(**vars(args))
-
-        if args.hyper:
-            trained_model = model_class.tune_hyper_parameter(training, **vars(args))
-
-        else:
-            if args.model is None:
-                untrained_model = model_class.generate_model(training, **vars(args))
-            else:
-                untrained_model = model_class.load_model(**vars(args))
-
-            trained_model = model_class.train_model(training, untrained_model, **vars(args))
-
-        export_metadata(model_class.name, args)
-
-        # TODO: Maybe look into wandb
-        model_class.evaluate_model(trained_model, training, **vars(args))
+            # TODO: Maybe look into wandb
+            # model_class.evaluate_model(trained_model, training, **vars(args))
 
 
 if __name__ == '__main__':
@@ -203,21 +225,12 @@ if __name__ == '__main__':
     c = importlib.import_module(f"{package_dir}")
 
     for name_local in dir(c):
-        print(name_local)
         if inspect.isclass(getattr(c, name_local)):
             Model = getattr(c, name_local)
             model_classes.append(Model)
             print(f"{Model.name} model has been loaded in")
 
-    loaded_models = []
-
-    for m in models:
-        for mc in model_classes:
-            if mc.name:
-                if not loaded_models.__contains__(mc):
-                    loaded_models.append(mc)
-
-    main(parse_args(loaded_models), loaded_models)
+    main(parse_args())
 
 # Check names of the loaded models with the corresponding folder
 # Load metadata into train.py and predict.py for checking
