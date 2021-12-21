@@ -19,7 +19,7 @@ class Model:
         raise NotImplementedError()
 
     def load_model(self, **kwargs) -> Any:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def predict(self, **kwargs) -> List:
         raise NotImplementedError()

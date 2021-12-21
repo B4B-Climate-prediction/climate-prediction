@@ -1,11 +1,9 @@
-import ast
 import os
 import pickle
 import pandas as pd
 from abc import ABC
 from pathlib import Path
 
-from pandas import DateOffset
 from pytorch_forecasting import TemporalFusionTransformer, QuantileLoss, TimeSeriesDataSet
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 from pytorch_lightning import Trainer
@@ -45,8 +43,8 @@ class Tft(Model, ABC):
             group_ids=kwargs['groups'],
             min_encoder_length=0,
             max_encoder_length=27,  # Zoek deze onzin nog uit!
-            min_prediction_length=6,
-            max_prediction_length=6,
+            min_prediction_length=1,
+            max_prediction_length=1,
             time_varying_known_categoricals=kwargs['kncats'],
             time_varying_known_reals=kwargs['knreels'],
             time_varying_unknown_categoricals=kwargs['uncats'],
@@ -99,24 +97,31 @@ class Tft(Model, ABC):
 
         return trainer  # should return something that is obtainable by wandb!
 
-    def predict(self, model, data, **kwargs):
-        encoder_data = self.data[lambda y: y.Index > y.Index.max() - 27]
+    def predict(self, model_, data_, **kwargs):
+        encoder_length = 27
 
-        # select last known data point and create decoder data from it by repeating it and incrementing the month
-        # in a real world dataset, we should not just forward fill the covariates but specify them to account
-        # for changes in special days and prices (which you absolutely should do but we are too lazy here)
-        last_data = self.data[lambda y: y.index == y.index.max()]
-        decoder_data = pd.concat([last_data.assign(
-            Timestamp=lambda y: y['Timestamp'] + DateOffset(ast.parse(f'{kwargs["timeunit"][1]}={(int(kwargs["timeunit"][0]))}')))
-                                  for i in range(1, kwargs['timesteps'] + 1)], ignore_index=True)
+        predictions = [None for _ in range(encoder_length)]
 
-        # add time index consistent with "data"
-        decoder_data["Index"] += encoder_data["Index"].max() + decoder_data.index + 1 - decoder_data["Index"].min()
+        for j_lower in range(len(data_)):
+            j_upper = j_lower + encoder_length
 
-        # combine encoder and decoder data
-        new_prediction_data = pd.concat([encoder_data, decoder_data], ignore_index=True)
+            if j_upper > (len(data_) - 1):
+                break
 
-        return model.predict(new_prediction_data)
+            encoder_data = data_[j_lower:j_upper]
+
+            last_data = encoder_data[lambda x: x.Index == x.Index.max()]
+            decoder_data = last_data.assign(Timestamp=lambda y: y.Timestamp + pd.DateOffset(minutes=10))
+
+            # add time index consistent with "data"
+            decoder_data["Index"] += encoder_data["Index"].max() + decoder_data.index + 1 - decoder_data["Index"].min()
+
+            # combine encoder and decoder data
+            new_prediction_data = pd.concat([encoder_data, decoder_data], ignore_index=True)
+
+            predictions.append((model_.predict(new_prediction_data)[0][0]).item())
+
+        return predictions
 
     def tune_hyper_parameter(self, dataset, **kwargs):  # Add clean up after the creation of the best trial!
         """lol"""

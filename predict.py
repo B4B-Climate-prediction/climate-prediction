@@ -2,6 +2,7 @@ import importlib
 import inspect
 import sys
 
+import numpy as np
 import pandas as pd
 from pathlib import Path
 from argparse import ArgumentParser
@@ -20,65 +21,10 @@ def parse_args(models):
     )
 
     parser.add_argument(
-        '-t', '--targets',
-        required=True,
-        action='extend',
-        nargs='+',
-        help='Target feature(s) in dataset, specify minimal one'
-    )
-
-    parser.add_argument(
-        '-g', '--groups',
-        required=True,
-        action='extend',
-        nargs='+',
-        help='Groups in dataset, specify minimal one'
-    )
-
-    parser.add_argument(
-        '-kr', '--knreels',
-        action='extend',
-        nargs='*',
-        default=[],
-        help='Known reels features in dataset (also known in the future). Default: []'
-    )
-
-    parser.add_argument(
-        '-kc', '--kncats',
-        action='extend',
-        nargs='*',
-        default=[],
-        help='Known categoricals features in dataset (also known in the future). Default: []'
-    )
-
-    parser.add_argument(
-        '-ur', '--unreels',
-        action='extend',
-        nargs='*',
-        default=[],
-        help='Unknown reels features in dataset. Default: []'
-    )
-
-    parser.add_argument(
-        '-uc', '--uncats',
-        action='extend',
-        nargs='*',
-        default=[],
-        help='Unknown categoricals features in dataset. Default: []'
-    )
-
-    parser.add_argument(
         '-m', '--model',
         required=True,
         type=str,
         help='Model file path, must be a (.?) file. If specified this model will be trained'
-    )
-
-    parser.add_argument(
-        '-b', '--batch',
-        default=128,
-        type=int,
-        help='Batch size during training. Default: 128'
     )
 
     parser.add_argument(
@@ -91,8 +37,6 @@ def parse_args(models):
     parser.add_argument(
         '-tu', '--timeunit',
         default=['10', 'minutes'],
-        type=[],
-        required=True,
         help='Specify the timeunit difference between rows. Default: [10, minutes]'
     )
 
@@ -106,20 +50,19 @@ def parse_args(models):
 def main(args, chosen_models):
     print(args)
 
-    path = str(Path(__file__).parent / 'out' / 'datasets' / args.data)
-    df = pd.read_csv(path)
+    df_path = str(Path(__file__).parent / 'datasets' / args.data)
+    df = pd.read_csv(df_path, parse_dates=['Timestamp'])
 
     for model in chosen_models:
         model_class = model(df)
 
-        dataset = model_class.generate_time_series_dataset(**vars(args))
-
         trained_model = model_class.load_model(**vars(args))
 
-        predictions = model_class.predict(trained_model, dataset, **vars(args))
+        preds = model_class.predict(trained_model, df, **vars(args))
 
-        print(predictions)
+        df[f'{model.name}'] = preds
 
+    print()
 
 if __name__ == '__main__':
     models = []
@@ -160,7 +103,7 @@ if __name__ == '__main__':
 
     # -Specify Timestep (Bryan)
     # -Specify which is the date column
-    # -Figure out why it only predicts 6 timesteps
+    # -Figure out why it only predicts 6 timesteps (this is because min- and max_prediction length in the dataset are both set to 6)
     # -Move specified column to convert
     # -Generate metadata file for algoritme
     # -Make index more time-based (this will increase accuracy by a lot)
