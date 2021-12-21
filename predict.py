@@ -17,6 +17,7 @@ command-arguments:
 
 import importlib
 import inspect
+import os
 import sys
 
 import pandas as pd
@@ -26,7 +27,7 @@ from argparse import ArgumentParser
 model_classes = []
 
 
-def parse_args(models):
+def parse_args():
     """
     Parse the arguments from the command using argparse
 
@@ -115,14 +116,43 @@ def parse_args(models):
         help='Specify the timeunit difference between rows. Default: [10, minutes]'
     )
 
-    for model in models:
+    for model in model_classes:
         parser.add_argument(model.name)
         model.add_arguments(parser)
 
     return parser.parse_args()
 
 
-def main(args, chosen_models):
+def read_metadata(file):
+    f = open(file, 'r+')
+
+    lines = f.readlines()
+
+    return [lines[0].strip(), lines[1].strip(), lines[2], eval(lines[3]), eval(lines[4])]
+
+
+def find_model(name):
+    for model in model_classes:
+        if str(model.name) == str(name):
+            return model
+
+
+def check_compatability(df, metadata):
+    columns = list(df.columns.values)
+
+    missing_columns = []
+
+    compatability = True
+
+    for column in metadata[4]:
+        if not columns.__contains__(column):
+            missing_columns.append(column)
+            compatability = False
+
+    return compatability, missing_columns
+
+
+def main(args):
     """
     The main method that runs whenever the file is being used.
 
@@ -136,26 +166,50 @@ def main(args, chosen_models):
 
     :return: Nothing
     """
-
-    path = str(Path(__file__).parent / 'out' / 'datasets' / args.data)
+    path = str(Path(__file__).parent / args.data)
     df = pd.read_csv(path)
 
-    index = 0  # Maybe improve with metadata file!
+    created_models = []
 
-    for model in chosen_models:
-        model_class = model(df)
+    for model_dir in args.model:
+        p = Path(__file__).parent / model_dir
+        for file in os.listdir(p):
+            if file.endswith('.txt') & file.startswith('metadata'):
+                metadata = read_metadata(p / file)
+            else:
+                weights_file = p / file
 
-        trained_model = model_class.load_model(args['model'][index])
+        if metadata is not None:
+            model_ = find_model(metadata[0])
 
-        predictions = model_class.predict(trained_model, **vars(args))
+            if model_ is None:
+                print(f"Couldn't find model: {metadata[0]}")
+                quit(101)
+                break
 
-        index += 1
+            model_class_ = model_(metadata[1], df)
+
+            compatability, missing_columns = check_compatability(df, metadata)
+
+            if not compatability:
+                print(
+                    'One of the models is not compatible with the dataset and is missing: ' + str(missing_columns))
+                quit(102)
+                break
+
+            created_models.append(model_class_)
+
+    for model in created_models:
+        dataset = model.generate_time_series_dataset(**vars(args))
+
+        trained_model = model.load_model(weights_file, **vars(args))
+
+        predictions = model.predict(trained_model, dataset, **vars(args))
 
         print(predictions)
 
 
 if __name__ == '__main__':
-
     models = []
 
     for i in range(1, len(sys.argv)):
@@ -177,15 +231,7 @@ if __name__ == '__main__':
             model_classes.append(Model)
             print(f"{Model.name} model has been loaded in")
 
-    loaded_models = []
-
-    for m in models:
-        for mc in model_classes:
-            if mc.name:
-                if not loaded_models.__contains__(mc):
-                    loaded_models.append(mc)
-
-    main(parse_args(loaded_models), loaded_models)
+    main(parse_args(), models)
 
     # TODO:
     # -Let the user predict X amount of time-units into the future (see bullet point 5)

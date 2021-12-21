@@ -23,8 +23,8 @@ class Tft(Model, ABC):
 
     add_arguments = lambda parser: [print(parser)]
 
-    def __init__(self, data):
-        super().__init__(data)
+    def __init__(self, model_id, data):
+        super().__init__(model_id, data)
 
     def generate_time_series_dataset(self, **kwargs):
         """
@@ -101,12 +101,14 @@ class Tft(Model, ABC):
         train_dataloader, val_dataloader = self.create_data_loaders(dataset, **kwargs)
 
         trainer = Trainer(
+            logger=False,
             max_epochs=kwargs['epochs'],
             gpus=0,
             gradient_clip_val=0.15,
             limit_train_batches=50,
-            callbacks=[early_stop_callback],
-            weights_save_path=str(Path(__file__).parent / 'out' / 'models'),
+            callbacks=[],
+            weights_save_path=str(Path(__file__).parent.parent / 'out' / 'models' / 'tft' / f'{self.model_id}'),
+            default_root_dir=''
             # logger=kwargs['logger'] WANDB
         )
 
@@ -114,6 +116,8 @@ class Tft(Model, ABC):
                     train_dataloaders=train_dataloader,
                     val_dataloaders=val_dataloader
                     )
+
+        #torch.save(created_model.state_dict(), os.path.join(Path(__file__).parent.parent / 'out' / 'models' / 'tft', 'weights.ckpt'))
 
         return trainer  # should return something that is obtainable by wandb!
 
@@ -131,8 +135,7 @@ class Tft(Model, ABC):
         # select last known data point and create decoder data from it by repeating it and incrementing the month
         # in a real world dataset, we should not just forward fill the covariates but specify them to account
         # for changes in special days and prices (which you absolutely should do but we are too lazy here)
-        last_data = self.data[lambda y: y.index == y.index.max()] # 11:50 22C 50 3001
-
+        last_data = self.data[lambda y: y.index == y.index.max()]
         decoder_data = pd.concat([last_data.assign(
             Timestamp=lambda y: y['Timestamp'] + DateOffset(ast.parse(f'{kwargs["timeunit"][1]}={(int(kwargs["timeunit"][0]))}')))
                                   for i in range(1, kwargs['timesteps'] + 1)], ignore_index=True)
@@ -166,7 +169,7 @@ class Tft(Model, ABC):
         with open('optimization_summary.pkl', 'wb') as fout:
             pickle.dump(study, fout)
 
-        # Use PATHLIB!
+        # Use PATHLIB! Todo: FIX!
         path = kwargs['model'] + "/trial_" + str(study.best_trial.number)
 
         files = os.listdir(path)
@@ -174,7 +177,7 @@ class Tft(Model, ABC):
         # SHOULD RETURN THE BEST TRIAL! IF THIS FUNCTION IS AVAILABLE!
         return TemporalFusionTransformer.load_from_checkpoint(path + "/" + files[len(files) - 1])
 
-    def evaluate_model(self, model, dataset, **kwargs):
+    def evaluate_model(self, evaluated_model, dataset, **kwargs):
         """
         Evaluates the model based on performance.
 
@@ -183,13 +186,12 @@ class Tft(Model, ABC):
 
         :return: Nothing
         """
-
         _, validation_data_loader = self.create_data_loaders(dataset, **kwargs)
 
-        raw_predictions, x = model.predict(validation_data_loader, mode="raw", return_x=True)
+        raw_predictions, x = evaluated_model.predict(validation_data_loader, mode="raw", return_x=True)
 
         for i in range(len(x)):
-            model.plot_prediction(x, raw_predictions, idx=i, add_loss_to_title=True)
+            evaluated_model.plot_prediction(x, raw_predictions, idx=i, add_loss_to_title=True)
 
     def create_data_loaders(self, dataset, **kwargs):
         """
@@ -213,4 +215,4 @@ class Tft(Model, ABC):
 
         :return: TemporalFusionTransformer
         """
-        return TemporalFusionTransformer.load_from_checkpoint(Path(__file__).parent / path)
+        return TemporalFusionTransformer.load_from_checkpoint(path)

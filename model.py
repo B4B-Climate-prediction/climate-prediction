@@ -6,9 +6,9 @@ class Model:
     Base class for the models.
     """
 
-    def __init__(self, data):
-        """Constructor that takes in the dataframe from pandas"""
+    def __init__(self, model_id, data):
         self.data = data
+        self.model_id = model_id
 
     def generate_time_series_dataset(self, **kwargs) -> Any:
         """
