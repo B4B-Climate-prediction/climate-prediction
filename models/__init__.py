@@ -11,8 +11,8 @@ class ExampleModel(ABC, Model):
 
     add_arguments = lambda parser: [additional arguments]
 
-    def __init__(self, data):
-        super().__init__(data)
+    def __init__(self, model_id, data):
+        super().__init__(model_id, data)
 
     def generate_time_series_dataset(self, **kwargs):
         #your code
