@@ -132,8 +132,8 @@ def main(args, chosen_models):
         wandb.init(project=project, entity=team)
         wandb.login()
 
-    df_path = str(Path(__file__).parent / 'datasets' / args.data)
-    df = pd.read_csv(df_path)
+    path = str(Path(__file__).parent / args.data)
+    df = pd.read_csv(path)
 
     created_models = []
 
@@ -156,7 +156,7 @@ def main(args, chosen_models):
             trained_model = model_class.train_model(training, untrained_model, **vars(args))
 
         # TODO: Maybe look into wandb
-        # model_class.evaluate_model(trained_model, training, **vars(args))
+        model_class.evaluate_model(trained_model, training, **vars(args))
 
 
 if __name__ == '__main__':
