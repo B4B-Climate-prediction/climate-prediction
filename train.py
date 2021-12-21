@@ -1,3 +1,22 @@
+"""
+A training file that can take multiple models, train them and evaluate them.
+
+Command-arguments:
+    -w [--WANDB]: API Key for WandB
+    -d [--DATA]: Data file path, must be a .csv file.
+    -t [--TARGETS]: columns of the data that need to be predicted
+    -g [--GROUPS]: groups in datasets
+    -kr [--KNREELS]: Known reels features in dataset (Also known in the future). Default: []
+    -kc [--KNCATS]: Known categorical features in dataset (also know in the future). Default: []
+    -ur [--UNREELS]: Unknown reel features in dataset. Default: []
+    -uc [--UNCATS]: Unknown categorical features in dataset. Default: []
+    -m [--MODEL]: Model file paths, must be a file. If specified it will continue training that model.
+    -hy [--HYPER]: hypertunes the model if specified, this will take a long time.
+    -e [--EPOCHS]: Amount of epochs to train. Default: 100
+    -b [--BATCH]: Batch size during training. Default: 128
+    -tr [--TRAILS]: The amount of times the hypertuning generates new hyper parameters to train the model. Default: 100
+"""
+
 import importlib
 import inspect
 import sys
@@ -18,6 +37,13 @@ model_classes = []
 
 
 def parse_args():
+    """
+    Parse the arguments from the command using argparse
+
+    :param models: the models being used by the command
+
+    :return: argument-parser
+    """
     parser = ArgumentParser(add_help=True)
 
     parser.add_argument(
@@ -86,7 +112,7 @@ def parse_args():
         action='extend',
         nargs='*',
         default=[],
-        help='Model file path, must be a (.?) file. If specified this model will be trained'
+        help='Model file paths, must be a (.?) file. If specified this model will be trained'
     )
 
     parser.add_argument(
@@ -178,6 +204,31 @@ def check_compatability(df, metadata):
 
 
 def main(args, chosen_models):
+    """
+    The main method that runs whenever the file is being used.
+
+    :param args: the arguments in the command.
+    :param chosen_models: the models have been specified in the command
+
+    This method loops through the chosen models and executes
+
+    Model.generate_time_series_dataset
+
+    if hypertuning is enabled it will call:
+
+        -Model.tune_hyper_parameter
+
+    else it will check for an existing model otherwise it will generate a new model.
+        -Model.load_model
+        -Model.generate_model
+
+    -Model.train_model
+    -Model.evaluate_model
+
+    :return: Nothing
+    """
+
+    # TODO Fix WandB logger!
     logger = None
     if args.wandb is not None:
         team = 'b4b-cp'

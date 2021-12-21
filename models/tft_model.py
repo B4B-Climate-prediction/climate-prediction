@@ -1,3 +1,5 @@
+"""A pytorch implementation to train, load & predict a forecasting model"""
+
 import ast
 import os
 import pickle
@@ -5,7 +7,6 @@ import pandas as pd
 from abc import ABC
 from pathlib import Path
 
-import torch
 from pandas import DateOffset
 from pytorch_forecasting import TemporalFusionTransformer, QuantileLoss, TimeSeriesDataSet
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
@@ -17,6 +18,7 @@ from model import Model
 
 class Tft(Model, ABC):
     """Temporal Fusion Transformer model"""
+
     name = "Tft"
 
     add_arguments = lambda parser: [print(parser)]
@@ -24,8 +26,12 @@ class Tft(Model, ABC):
     def __init__(self, model_id, data):
         super().__init__(model_id, data)
 
-    # Maybe check if possible to move convert
     def generate_time_series_dataset(self, **kwargs):
+        """
+        Generates a TimeSeriesDataSet
+
+        :return: TimeSeriesDataSet
+        """
         targets = kwargs['targets']
 
         if len(targets) == 1:
@@ -59,6 +65,12 @@ class Tft(Model, ABC):
         )
 
     def generate_model(self, dataset, **kwargs):
+        """
+        Generates a temporal fusion transformer
+
+        :return: TemporalFusionTransformer
+        """
+
         targets = kwargs['targets']
 
         if len(targets) > 1:
@@ -79,6 +91,11 @@ class Tft(Model, ABC):
         )
 
     def train_model(self, dataset, created_model, **kwargs):
+        """
+        Trains a TemporalFusionTransformer
+
+        :return: A trainer object
+        """
         early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode='min')
 
         train_dataloader, val_dataloader = self.create_data_loaders(dataset, **kwargs)
@@ -104,7 +121,15 @@ class Tft(Model, ABC):
 
         return trainer  # should return something that is obtainable by wandb!
 
-    def predict(self, model, data, **kwargs):
+    def predict(self, model, **kwargs):
+        """
+        Predicts X amount of time-steps into the future.
+
+        :param model: trained model
+
+        :return: predicted targets
+        """
+
         encoder_data = self.data[lambda y: y.Index > y.Index.max() - 27]
 
         # select last known data point and create decoder data from it by repeating it and incrementing the month
@@ -124,7 +149,13 @@ class Tft(Model, ABC):
         return model.predict(new_prediction_data)
 
     def tune_hyper_parameter(self, dataset, **kwargs):  # Add clean up after the creation of the best trial!
-        """lol"""
+        """
+        Hyper-tunes the TemporalFusionTransformer based on Trials & Epochs
+
+        :param dataset: TimeSeriesDataSet
+
+        :return: Best TemporalFusionTransformer
+        """
         train_dataloader, val_dataloader = self.create_data_loaders(dataset, **kwargs)
 
         study = optimize_hyperparameters(
@@ -147,6 +178,14 @@ class Tft(Model, ABC):
         return TemporalFusionTransformer.load_from_checkpoint(path + "/" + files[len(files) - 1])
 
     def evaluate_model(self, evaluated_model, dataset, **kwargs):
+        """
+        Evaluates the model based on performance.
+
+        :param dataset: TimeSeriesDataSet
+        :param model: TemporalFusionTransformer
+
+        :return: Nothing
+        """
         _, validation_data_loader = self.create_data_loaders(dataset, **kwargs)
 
         raw_predictions, x = evaluated_model.predict(validation_data_loader, mode="raw", return_x=True)
@@ -155,6 +194,15 @@ class Tft(Model, ABC):
             evaluated_model.plot_prediction(x, raw_predictions, idx=i, add_loss_to_title=True)
 
     def create_data_loaders(self, dataset, **kwargs):
+        """
+        For the TemporalFusionTransformer it requires data-loaders
+        This function is to split the dataset into a validation & training set.
+
+        :param dataset: TimeSeriesDataSet
+
+        :return: DataLoaders
+        """
+
         validation = TimeSeriesDataSet.from_dataset(dataset, self.data, predict=True, stop_randomization=True)
 
         return dataset.to_dataloader(train=True, batch_size=kwargs['batch'], num_workers=2,
@@ -162,4 +210,9 @@ class Tft(Model, ABC):
                                                                               num_workers=2, shuffle=False)
 
     def load_model(self, path, **kwargs):
+        """
+        Load in TemporalFusionTransformer
+
+        :return: TemporalFusionTransformer
+        """
         return TemporalFusionTransformer.load_from_checkpoint(path)
