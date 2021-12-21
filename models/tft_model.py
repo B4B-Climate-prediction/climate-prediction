@@ -21,8 +21,8 @@ class Tft(Model, ABC):
 
     add_arguments = lambda parser: [print(parser)]
 
-    def __init__(self, data):
-        super().__init__(data)
+    def __init__(self, model_id, data):
+        super().__init__(model_id, data)
 
     # Maybe check if possible to move convert
     def generate_time_series_dataset(self, **kwargs):
@@ -90,7 +90,8 @@ class Tft(Model, ABC):
             gradient_clip_val=0.15,
             limit_train_batches=50,
             callbacks=[],
-            weights_save_path=str(Path(__file__).parent.parent / 'out' / 'models' / 'tft' / 'ID!'),
+            weights_save_path=str(Path(__file__).parent.parent / 'out' / 'models' / 'tft' / f'{self.model_id}'),
+            default_root_dir=''
             # logger=kwargs['logger'] WANDB
         )
 
@@ -137,7 +138,7 @@ class Tft(Model, ABC):
         with open('optimization_summary.pkl', 'wb') as fout:
             pickle.dump(study, fout)
 
-        # Use PATHLIB!
+        # Use PATHLIB! Todo: FIX!
         path = kwargs['model'] + "/trial_" + str(study.best_trial.number)
 
         files = os.listdir(path)
@@ -145,13 +146,13 @@ class Tft(Model, ABC):
         # SHOULD RETURN THE BEST TRIAL! IF THIS FUNCTION IS AVAILABLE!
         return TemporalFusionTransformer.load_from_checkpoint(path + "/" + files[len(files) - 1])
 
-    def evaluate_model(self, model, dataset, **kwargs):
+    def evaluate_model(self, evaluated_model, dataset, **kwargs):
         _, validation_data_loader = self.create_data_loaders(dataset, **kwargs)
 
-        raw_predictions, x = model.predict(validation_data_loader, mode="raw", return_x=True)
+        raw_predictions, x = evaluated_model.predict(validation_data_loader, mode="raw", return_x=True)
 
         for i in range(len(x)):
-            model.plot_prediction(x, raw_predictions, idx=i, add_loss_to_title=True)
+            evaluated_model.plot_prediction(x, raw_predictions, idx=i, add_loss_to_title=True)
 
     def create_data_loaders(self, dataset, **kwargs):
         validation = TimeSeriesDataSet.from_dataset(dataset, self.data, predict=True, stop_randomization=True)
@@ -160,5 +161,5 @@ class Tft(Model, ABC):
                                      shuffle=False), validation.to_dataloader(train=False, batch_size=kwargs['batch'],
                                                                               num_workers=2, shuffle=False)
 
-    def load_model(self, **kwargs):
-        return TemporalFusionTransformer.load_from_checkpoint(Path(__file__).parent / kwargs['model'])
+    def load_model(self, path, **kwargs):
+        return TemporalFusionTransformer.load_from_checkpoint(path)
