@@ -14,6 +14,7 @@ def read_configs(path, loaded_models) -> []:
         config = {
             'model': parser.get('model', 'name'),
             'targets': eval(parser.get('data', 'targets')),
+            'groups': eval(parser.get('data', 'groups')),
             'unreels': eval(parser.get('data', 'unknown_reels')),
             'uncats': eval(parser.get('data', 'unknown_categoricals')),
             'knreels': eval(parser.get('data', 'known_reels')),
@@ -32,7 +33,7 @@ def read_configs(path, loaded_models) -> []:
     return configs
 
 
-def export_metadata(config, model_id, df, pl):
+def export_metadata(config, df, pl):
     """
     Generation of metadata file for the models
 
@@ -42,14 +43,25 @@ def export_metadata(config, model_id, df, pl):
     :param pl: saving_path
     :return: [model_name, id, data_source, targets, column_name]
     """
+
+    print(type(config['model']))
+
     configparser = ConfigParser()
     configparser.add_section('model')
-    configparser.set('name', config['name'])
-    configparser.set('id', model_id)
+    configparser.set(section='model', option="name", value=config['model'])
+    configparser.set(section='model', option="id", value=str(config['id']))
 
     configparser.add_section('data')
-    configparser.set('columns', str(list(df.columns.values)))
-    configparser.set('targets', str(config['targets']))
+    configparser.set(section='data', option='columns', value=str(list(df.columns.values)))
+    configparser.set(section='data', option='groups', value=str(config['groups']))
+    configparser.set(section='data', option='targets', value=str(config['targets']))
+    configparser.set(section='data', option='unknown-categoricals', value=str(config['uncats']))
+    configparser.set(section='data', option='unknown-reels', value=str(config['unreels']))
+    configparser.set(section='data', option='known-categoricals', value=str(config['kncats']))
+    configparser.set(section='data', option='known-reels', value=str(config['knreels']))
+
+    configparser.add_section('training')
+    configparser.set(section='training', option='batch-size', value=str(config['batch']))
 
     with open(Path(pl) / f'metadata-{datetime.now().strftime("%H%M%S")}-{config["epochs"]}.cfg', 'w') as configfile:
         configparser.write(configfile)
@@ -69,5 +81,11 @@ def read_metadata(file):
         'model': configparser.get('model', 'name'),
         'id': configparser.get('model', 'id'),
         'columns': eval(configparser.get('data', 'columns')),
-        'targets': eval(configparser.get('data', 'targets'))
+        'groups': eval(configparser.get('data', 'groups')),
+        'targets': eval(configparser.get('data', 'targets')),
+        'uncats': eval(configparser.get('data', 'unknown-categoricals')),
+        'unreels': eval(configparser.get('data', 'unknown-reels')),
+        'kncats': eval(configparser.get('data', 'known-categoricals')),
+        'knreels': eval(configparser.get('data', 'known-reels')),
+        'batch': int(configparser.get('training', 'batch-size'))
     }

@@ -21,58 +21,62 @@ class Tft(Model, ABC):
     name = "Tft"
 
     read_config = lambda config_reader: {
-        'test': config_reader.read('training', 'encoder_length')
+        'encoder_length': config_reader.read('training', 'encoder_length')
     }
 
-    def __init__(self, model_id, data):
-        super().__init__(model_id, data)
+    write_config = lambda config_writer: {
 
-    def generate_time_series_dataset(self, **kwargs):
+    }
+
+    def __init__(self, model_id, metadata, data):
+        super().__init__(model_id, metadata, data)
+
+    def generate_time_series_dataset(self):
         """
         Generates a TimeSeriesDataSet
 
         :return: TimeSeriesDataSet
         """
-        targets = kwargs['targets']
+        targets = self.metadata['targets']
 
         if len(targets) == 1:
             target = targets[0]
         else:
             target = targets
 
-        for k_cat in kwargs['kncats']:
+        for k_cat in self.metadata['kncats']:
             self.data[k_cat] = str(self.data[k_cat])
 
-        for uk_cat in kwargs['uncats']:
+        for uk_cat in self.metadata['uncats']:
             self.data[uk_cat] = str(self.data[uk_cat])
 
         return TimeSeriesDataSet(
             self.data,
             target=target,
             time_idx='Index',
-            group_ids=kwargs['groups'],
+            group_ids=self.metadata['groups'],
             min_encoder_length=0,
             max_encoder_length=27,  # Zoek deze onzin nog uit!
             min_prediction_length=1,
             max_prediction_length=1,
-            time_varying_known_categoricals=kwargs['kncats'],
-            time_varying_known_reals=kwargs['knreels'],
-            time_varying_unknown_categoricals=kwargs['uncats'],
-            time_varying_unknown_reals=kwargs['unreels'],
+            time_varying_known_categoricals=self.metadata['kncats'],
+            time_varying_known_reals=self.metadata['knreels'],
+            time_varying_unknown_categoricals=self.metadata['uncats'],
+            time_varying_unknown_reals=self.metadata['unreels'],
             add_relative_time_idx=True,
             add_target_scales=True,
             add_encoder_length=True,
             allow_missing_timesteps=True
         )
 
-    def generate_model(self, dataset, **kwargs):
+    def generate_model(self, dataset):
         """
         Generates a temporal fusion transformer
 
         :return: TemporalFusionTransformer
         """
 
-        targets = kwargs['targets']
+        targets = self.metadata['targets']
 
         if len(targets) > 1:
             output = [7 for _ in targets]
@@ -99,7 +103,7 @@ class Tft(Model, ABC):
         """
         early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=1, verbose=False, mode='min')
 
-        train_dataloader, val_dataloader = self.create_data_loaders(dataset, **kwargs)
+        train_dataloader, val_dataloader = self.create_data_loaders(dataset)
 
         trainer = Trainer(
             logger=False,
@@ -107,7 +111,7 @@ class Tft(Model, ABC):
             gpus=0,
             gradient_clip_val=0.15,
             limit_train_batches=50,
-            callbacks=[],
+            callbacks=[early_stop_callback],
             weights_save_path=str(Path(__file__).parent.parent / 'out' / 'models' / 'tft' / f'{self.model_id}'),
             default_root_dir=''
             # logger=kwargs['logger'] WANDB
@@ -126,7 +130,7 @@ class Tft(Model, ABC):
         """
         Predicts X amount of time-steps into the future.
 
-        :param model: trained model
+        :param model_: trained model
 
         :return: predicted targets
         """
@@ -164,7 +168,7 @@ class Tft(Model, ABC):
 
         :return: Best TemporalFusionTransformer
         """
-        train_dataloader, val_dataloader = self.create_data_loaders(dataset, **kwargs)
+        train_dataloader, val_dataloader = self.create_data_loaders(dataset)
 
         study = optimize_hyperparameters(
             train_dataloader=train_dataloader,
@@ -185,23 +189,23 @@ class Tft(Model, ABC):
         # SHOULD RETURN THE BEST TRIAL! IF THIS FUNCTION IS AVAILABLE!
         return TemporalFusionTransformer.load_from_checkpoint(path + "/" + files[len(files) - 1])
 
-    def evaluate_model(self, evaluated_model, dataset, **kwargs):
+    def evaluate_model(self, evaluated_model, dataset):
         """
         Evaluates the model based on performance.
 
         :param dataset: TimeSeriesDataSet
-        :param model: TemporalFusionTransformer
+        :param evaluated_model: TemporalFusionTransformer
 
         :return: Nothing
         """
-        _, validation_data_loader = self.create_data_loaders(dataset, **kwargs)
+        _, validation_data_loader = self.create_data_loaders(dataset)
 
         raw_predictions, x = evaluated_model.predict(validation_data_loader, mode="raw", return_x=True)
 
         for i in range(len(x)):
             evaluated_model.plot_prediction(x, raw_predictions, idx=i, add_loss_to_title=True)
 
-    def create_data_loaders(self, dataset, **kwargs):
+    def create_data_loaders(self, dataset):
         """
         For the TemporalFusionTransformer it requires data-loaders
         This function is to split the dataset into a validation & training set.
@@ -213,8 +217,8 @@ class Tft(Model, ABC):
 
         validation = TimeSeriesDataSet.from_dataset(dataset, self.data, predict=True, stop_randomization=True)
 
-        return dataset.to_dataloader(train=True, batch_size=kwargs['batch'], num_workers=2,
-                                     shuffle=False), validation.to_dataloader(train=False, batch_size=kwargs['batch'],
+        return dataset.to_dataloader(train=True, batch_size=self.metadata['batch'], num_workers=2,
+                                     shuffle=False), validation.to_dataloader(train=False, batch_size=self.metadata['batch'],
                                                                               num_workers=2, shuffle=False)
 
     def load_model(self, path, **kwargs):

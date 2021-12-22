@@ -6,11 +6,12 @@ class Model:
     Base class for the models.
     """
 
-    def __init__(self, model_id, data):
+    def __init__(self, model_id, metadata, data):
         self.data = data
+        self.metadata = metadata
         self.model_id = model_id
 
-    def generate_time_series_dataset(self, **kwargs) -> Any:
+    def generate_time_series_dataset(self) -> Any:
         """
         Generate a dataset that contains time-series dataset
 
@@ -18,7 +19,7 @@ class Model:
         """
         raise NotImplementedError()
 
-    def generate_model(self, data, **kwargs) -> Any:
+    def generate_model(self, data) -> Any:
         """
         Generate a model that can take a time-series dataset in as training
 
@@ -57,9 +58,11 @@ class Model:
         """
         raise NotImplementedError()
 
-    def tune_hyper_parameter(self, **kwargs):
+    def tune_hyper_parameter(self, dataset, **kwargs):
         """
         Hyper tune different models
+
+        :param dataset: TimeSeriesDataSet
 
         :return: the best hyper-tuned model
         """

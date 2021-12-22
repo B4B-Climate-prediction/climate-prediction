@@ -47,6 +47,27 @@ def parse_args():
         help='Model file paths, must be a (.?) file. If specified this model will be trained'
     )
 
+    parser.add_argument(
+        '-e', '--epochs',
+        default=100,
+        type=int,
+        help='Amount of epochs to training. Default: 100'
+    )
+
+    parser.add_argument(
+        '-tr', '--trials',
+        default=100,
+        type=int,
+        help='Trials should only be used whenever hypertuning is activated. Trials specifies the amount of trials it '
+             'will maximally run before coming to the best results. Default: 100 '
+    )
+
+    parser.add_argument(
+        '-hy', '--hyper',
+        action='store_true',
+        help='Hypertunes the model if specified, this will take a long time'
+    )
+
     return parser.parse_args()
 
 
@@ -126,6 +147,7 @@ def main(args):
                     metadata = config_reader.read_metadata(p / file)
                 else:
                     weights_file = p / file
+                    print(p / file)
 
             if metadata is not None:
                 model = find_model(metadata['model'])
@@ -135,7 +157,7 @@ def main(args):
                     quit(101)
                     break
 
-                model_class = model(metadata['id'], df)
+                model_class = model(metadata['id'], metadata, df)
 
                 compatability, missing_columns = check_compatability(df, metadata['columns'])
 
@@ -145,8 +167,8 @@ def main(args):
                     quit(102)
                     break
 
-                if weights_file is not None:
-                    print(f'Cannot find model file of model: {metadata["name"]}')
+                if weights_file is None:
+                    print(f'Cannot find weights-file for model: {metadata["id"]}')
                     quit(104)
                     break
 
@@ -157,13 +179,13 @@ def main(args):
                 quit(103)
                 break
 
-        for index in range(0, len(created_models) - 1):
+        for index in range(0, len(created_models)):
             model = created_models[index]
             file = files[index]
 
-            training = model.generate_time_series_dataset(**vars(args))
+            training = model.generate_time_series_dataset()
 
-            trained_model = model.load_model(file, **vars(args))
+            trained_model = model.load_model(file)
 
             os.remove(file)
 
@@ -181,21 +203,23 @@ def main(args):
             if model is not None:
                 model_id = uuid.uuid4()
 
-                model_class = model(model_id, df)
+                config['id'] = model_id
 
-                training = model_class.generate_time_series_dataset(**vars(config))
+                model_class = model(model_id, config, df)
 
-                if config['hyper']:
-                    trained_model = model_class.tune_hyper_parameter(df, **vars(config))
+                training = model_class.generate_time_series_dataset()
+
+                if args.hyper:
+                    trained_model = model_class.tune_hyper_parameter(df, **vars(args))
                 else:
-                    c_model = model_class.generate_model(training, **vars(config))
+                    c_model = model_class.generate_model(training)
 
-                    trained_model = model_class.train_model(training, c_model, **vars(config))
+                    trained_model = model_class.train_model(training, c_model, **vars(args))
 
-                config_reader.export_metadata(config['model'], model_id, df,
+                config_reader.export_metadata(config, df,
                                               Path(__file__).parent.absolute() / 'out' / 'models' / f'{config["model"]}' / f'{model_id}' / 'checkpoints')
 
-                model_class.evaluate_model(trained_model, **vars(args))
+                #model_class.evaluate_model(trained_model, **vars(args))
             else:
                 print(f"Couldn't find model: {config['model']}")
                 quit(102)
