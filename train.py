@@ -53,6 +53,18 @@ def parse_args():
     )
 
     parser.add_argument(
+        '-wt', '--wandbteam',
+        type=str,
+        help='Team name for WandB'
+    )
+
+    parser.add_argument(
+        '-wp' '--wandbproject',
+        type=str,
+        help='Project name for WandB'
+    )
+
+    parser.add_argument(
         '-d', '--data',
         required=True,
         type=str,
@@ -259,12 +271,18 @@ def main(args, chosen_models):
 
     # TODO Fix WandB logger!
     global metadata, weights_file
-    logger = None
-    if args.wandb is not None:
-        team = 'b4b-cp'
-        project = 'climate-prediction'
+    # logger = None
 
-        logger = WandbLogger(project=project)
+    # TODO: REMOVE THIS API KEY BEFORE PUSH
+    args.wandb = '188c4a566f0324c6c00aa95e1a4d4f41b9ee1f92'
+    args.wandbteam = 'b4b-cp'
+    args.wandbproject = 'climate-prediction'
+
+    if args.wandb is not None and args.wandbteam is not None and args.wandbproject is not None:
+        team = args.wandbteam
+        project = args.wandbproject
+
+        # logger = WandbLogger(project=project)
         os.environ['WANDB_API_KEY'] = args.wandb
 
         wandb.init(project=project, entity=team)
@@ -348,10 +366,19 @@ def main(args, chosen_models):
 
                     trained_model = model_class.train_model(training, c_model, **vars(args))
 
-                export_metadata(name, model_id, args,
-                                (Path(__file__).parent / 'out' / 'models' / f'{name}' / f'{model_id}' / 'checkpoints'))
+                metadata_export_path = None
 
-                model_class.evaluate_model(trained_model, **vars(args))
+                # Model output changes when WandB is enabled as logger
+                if args.wandb is not None and args.wandbteam is not None and args.wandbproject is not None:
+                    metadata_export_path = (
+                                Path(__file__).parent / 'out' / 'models' / f'{name}' / f'{model_id}' / 'checkpoints')
+                else:
+                    metadata_export_path = (
+                                Path(__file__).parent / 'out' / 'models' / f'{name}' / f'{model_id}' / 'checkpoints')
+
+                export_metadata(name, model_id, args, metadata_export_path)
+
+                # model_class.evaluate_model(trained_model, **vars(args))
             else:
                 print(f"Couldn't find model: {name}")
                 quit(102)
