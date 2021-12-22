@@ -10,6 +10,7 @@ from pytorch_forecasting import TemporalFusionTransformer, QuantileLoss, TimeSer
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import EarlyStopping
+from pytorch_lightning.loggers import WandbLogger
 
 from model import Model
 
@@ -98,16 +99,20 @@ class Tft(Model, ABC):
 
         train_dataloader, val_dataloader = self.create_data_loaders(dataset, **kwargs)
 
+        logger = False
+
+        if kwargs['wandb'] is not None and kwargs['wandbproject'] is not None:
+            logger = WandbLogger(project=kwargs['wandbproject'])
+
         trainer = Trainer(
-            logger=False,
             max_epochs=kwargs['epochs'],
             gpus=0,
             gradient_clip_val=0.15,
             limit_train_batches=50,
             callbacks=[],
             weights_save_path=str(Path(__file__).parent.parent / 'out' / 'models' / 'tft' / f'{self.model_id}'),
-            default_root_dir=''
-            # logger=kwargs['logger'] WANDB
+            default_root_dir='',
+            logger=logger
         )
 
         trainer.fit(created_model,
