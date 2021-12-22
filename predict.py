@@ -185,10 +185,12 @@ def main(args):
 
     :return: Nothing
     """
+    global metadata, weights_file
     path = str(Path(__file__).parent / args.data)
     df = pd.read_csv(path)
 
     created_models = []
+    files = []
 
     for model_dir in args.model:
         p = Path(__file__).parent / model_dir
@@ -216,12 +218,26 @@ def main(args):
                 quit(102)
                 break
 
-            created_models.append(model_class_)
+            if weights_file is not None:
+                print(f'Cannot find model file of model: {metadata[0]}')
+                quit(104)
+                break
 
-    for model in created_models:
+            created_models.append(model_class_)
+            files.append(weights_file)
+
+        else:
+            print(f"Metadata file is invalid. Directory: {model_dir}")
+            quit(103)
+            break
+
+    for index in range(0, len(created_models) - 1):
+        file = files[index]
+        model = created_models[index]
+
         dataset = model.generate_time_series_dataset(**vars(args))
 
-        trained_model = model.load_model(weights_file, **vars(args))
+        trained_model = model.load_model(file, **vars(args))
 
         predictions = model.predict(trained_model, dataset, **vars(args))
 

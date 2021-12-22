@@ -258,6 +258,7 @@ def main(args, chosen_models):
     """
 
     # TODO Fix WandB logger!
+    global metadata, weights_file
     logger = None
     if args.wandb is not None:
         team = 'b4b-cp'
@@ -275,6 +276,7 @@ def main(args, chosen_models):
     if len(args.model) != 0:
 
         created_models = []
+        files = []
 
         for model_dir in args.model:
             p = Path(__file__).parent / model_dir
@@ -302,18 +304,31 @@ def main(args, chosen_models):
                     quit(102)
                     break
 
+                if weights_file is not None:
+                    print(f'Cannot find model file of model: {metadata[0]}')
+                    quit(104)
+                    break
+
                 created_models.append(model_class)
+                files.append(weights_file)
+            else:
+                print(f"Cannot load in metadata. Directory: {model_dir}")
+                quit(103)
+                break
 
-            for model in created_models:
-                training = model.generate_time_series_dataset(**vars(args))
+        for index in range(0, len(created_models) - 1):
+            model = created_models[index]
+            file = files[index]
 
-                trained_model = model.load_model(weights_file, **vars(args))
+            training = model.generate_time_series_dataset(**vars(args))
 
-                os.remove(weights_file)
+            trained_model = model.load_model(file, **vars(args))
 
-                trained_model = model.train_model(training, trained_model, **vars(args))
+            os.remove(file)
 
-                # model.evaluate_model(trained_model, training, **vars(args))
+            trained_model = model.train_model(training, trained_model, **vars(args))
+
+            # model.evaluate_model(trained_model, training, **vars(args))
 
     else:
         for name in chosen_models:
