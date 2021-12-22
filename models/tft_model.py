@@ -1,11 +1,12 @@
 """A pytorch implementation to train, load & predict a forecasting model"""
-
+import ast
 import os
 import pickle
 import pandas as pd
 from abc import ABC
 from pathlib import Path
 
+from pandas import DateOffset
 from pytorch_forecasting import TemporalFusionTransformer, QuantileLoss, TimeSeriesDataSet
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 from pytorch_lightning import Trainer
@@ -19,7 +20,9 @@ class Tft(Model, ABC):
 
     name = "Tft"
 
-    add_arguments = lambda parser: [print(parser)]
+    read_config = lambda config_reader: {
+        'test': config_reader.read('training', 'encoder_length')
+    }
 
     def __init__(self, model_id, data):
         super().__init__(model_id, data)
@@ -141,7 +144,7 @@ class Tft(Model, ABC):
             encoder_data = self.data[j_lower:j_upper]
 
             last_data = encoder_data[lambda x: x.Index == x.Index.max()]
-            decoder_data = last_data.assign(Timestamp=lambda y: y.Timestamp + pd.DateOffset(minutes=10))  # make dynamic
+            decoder_data = last_data.assign(Timestamp=lambda y: y.Timestamp + DateOffset(ast.parse('minutes=10')))  # make dynamic
 
             # add time index consistent with "data"
             decoder_data["Index"] += encoder_data["Index"].max() + decoder_data.index + 1 - decoder_data["Index"].min()
