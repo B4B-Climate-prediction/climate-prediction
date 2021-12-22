@@ -95,9 +95,10 @@ def parse_args():
 
     parser.add_argument(
         '-m', '--model',
-        required=True,
-        type=str,
-        help='Model file paths, must be a (.?) file.'
+        action='extend',
+        nargs='*',
+        default=[],
+        help='Model file paths, must be a (.?) file. If specified this model will be trained'
     )
 
     parser.add_argument(
