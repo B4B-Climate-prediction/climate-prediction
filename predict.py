@@ -20,7 +20,6 @@ import inspect
 import os
 import sys
 
-import numpy as np
 import pandas as pd
 from pathlib import Path
 from argparse import ArgumentParser
@@ -64,7 +63,7 @@ def parse_args():
     parser.add_argument(
         '-tu', '--timeunit',
         action='extend',
-        default=['10', 'min'],
+        default=['10', 'minutes'],
         nargs='*',
         required=True,
         help='Specify the timeunit difference between rows. Default: [10, minutes]'
@@ -84,9 +83,9 @@ def read_metadata(file):
     :param file: location of the file
     :return: [model_name, model_id, data_source, targets, column_names]
     """
-    f = open(file, 'r+')
-
-    lines = f.readlines()
+    with open(file, 'r+') as f:
+        lines = f.readlines()
+        f.close()
 
     return [lines[0].strip(), lines[1].strip(), lines[2], eval(lines[3]), eval(lines[4])]
 
@@ -192,7 +191,7 @@ def main(args):
 
         predictions = model.predict(trained_model, **vars(args))
         df[f'{metadata[1]}Predictions'] = predictions
-        print()
+    print()
 
 
 if __name__ == '__main__':

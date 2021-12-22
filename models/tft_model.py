@@ -123,7 +123,7 @@ class Tft(Model, ABC):
         """
         Predicts X amount of time-steps into the future.
 
-        :param model: trained model
+        :param model_: trained model
 
         :return: predicted targets
         """
@@ -141,7 +141,10 @@ class Tft(Model, ABC):
             encoder_data = self.data[j_lower:j_upper]
 
             last_data = encoder_data[lambda x: x.Index == x.Index.max()]
-            decoder_data = last_data.assign(Timestamp=lambda y: y.Timestamp + pd.DateOffset(minutes=10))  # make dynamic
+
+            unit = kwargs["timeunit"][1]  # E.g. 'minutes'
+            value = int(kwargs['timeunit'][0])  # E.g. 10
+            decoder_data = last_data.assign(Timestamp=lambda y: y.Timestamp + pd.DateOffset(**{unit: value}))
 
             # add time index consistent with "data"
             decoder_data["Index"] += encoder_data["Index"].max() + decoder_data.index + 1 - decoder_data["Index"].min()

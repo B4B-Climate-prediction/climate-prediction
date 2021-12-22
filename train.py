@@ -191,9 +191,10 @@ def read_metadata(file):
    :param file: location of the file
    :return: [model_name, model_id, data_source, targets, column_names]
    """
-    f = open(file, 'r+')
-
-    lines = f.readlines()
+    
+    with open(file, 'r+') as f:
+        lines = f.readlines()
+        f.close()
 
     return [lines[0].strip(), lines[1].strip(), lines[2], eval(lines[3]), eval(lines[4])]
 
