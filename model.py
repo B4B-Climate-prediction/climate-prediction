@@ -45,7 +45,7 @@ class Model:
 
         :return: a trained model
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def predict(self, model, **kwargs) -> List:
         """

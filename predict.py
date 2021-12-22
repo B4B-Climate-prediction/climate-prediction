@@ -20,6 +20,7 @@ import inspect
 import os
 import sys
 
+import numpy as np
 import pandas as pd
 from pathlib import Path
 from argparse import ArgumentParser
@@ -43,54 +44,6 @@ def parse_args():
         required=True,
         type=str,
         help='Data file path, must be a .csv file in the out/datasets directory.'
-    )
-
-    parser.add_argument(
-        '-t', '--targets',
-        required=True,
-        action='extend',
-        nargs='+',
-        help='Target feature(s) in dataset, specify minimal one'
-    )
-
-    parser.add_argument(
-        '-g', '--groups',
-        required=True,
-        action='extend',
-        nargs='+',
-        help='Groups in dataset, specify minimal one'
-    )
-
-    parser.add_argument(
-        '-kr', '--knreels',
-        action='extend',
-        nargs='*',
-        default=[],
-        help='Known reels features in dataset (also known in the future). Default: []'
-    )
-
-    parser.add_argument(
-        '-kc', '--kncats',
-        action='extend',
-        nargs='*',
-        default=[],
-        help='Known categoricals features in dataset (also known in the future). Default: []'
-    )
-
-    parser.add_argument(
-        '-ur', '--unreels',
-        action='extend',
-        nargs='*',
-        default=[],
-        help='Unknown reels features in dataset. Default: []'
-    )
-
-    parser.add_argument(
-        '-uc', '--uncats',
-        action='extend',
-        nargs='*',
-        default=[],
-        help='Unknown categoricals features in dataset. Default: []'
     )
 
     parser.add_argument(
@@ -146,7 +99,7 @@ def find_model(name):
     :return:
     """
     for model in model_classes:
-        if str(model.name) == str(name):
+        if str(model.name).lower() == str(name).lower():
             return model
 
 
@@ -187,8 +140,8 @@ def main(args):
     :return: Nothing
     """
     global metadata, weights_file
-    path = str(Path(__file__).parent / args.data)
-    df = pd.read_csv(path)
+    df_path = str(Path(__file__).parent / args.data)
+    df = pd.read_csv(df_path, parse_dates=['Timestamp'])
 
     created_models = []
     files = []
@@ -219,8 +172,8 @@ def main(args):
                 quit(102)
                 break
 
-            if weights_file is not None:
-                print(f'Cannot find model file of model: {metadata[0]}')
+            if weights_file is None:
+                print(f'Cannot find weights file: {metadata[0]}')
                 quit(104)
                 break
 
@@ -232,17 +185,14 @@ def main(args):
             quit(103)
             break
 
-    for index in range(0, len(created_models) - 1):
+    for index in range(0, len(created_models)):
         file = files[index]
         model = created_models[index]
-
-        dataset = model.generate_time_series_dataset(**vars(args))
-
         trained_model = model.load_model(file, **vars(args))
 
-        predictions = model.predict(trained_model, dataset, **vars(args))
-
-        print(predictions)
+        predictions = model.predict(trained_model, **vars(args))
+        df[f'{metadata[1]}Predictions'] = predictions
+        print()
 
 
 if __name__ == '__main__':
@@ -275,7 +225,7 @@ if __name__ == '__main__':
 
     # -Specify Timestep (Bryan)
     # -Specify which is the date column
-    # -Figure out why it only predicts 6 timesteps
+    # -Figure out why it only predicts 6 timesteps (this is because min- and max_prediction length in the dataset are both set to 6)
     # -Move specified column to convert
     # -Generate metadata file for algoritme
     # -Make index more time-based (this will increase accuracy by a lot)
