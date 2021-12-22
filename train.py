@@ -271,8 +271,8 @@ def main(args, chosen_models):
         wandb.init(project=project, entity=team)
         wandb.login()
 
-    path = str(Path(__file__).parent / args.data)
-    df = pd.read_csv(path)
+    df_path = str(Path(__file__).parent / 'out' / 'datasets' / args.data)
+    df = pd.read_csv(df_path, parse_dates=['Timestamp'])
 
     if len(args.model) != 0:
 

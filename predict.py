@@ -23,6 +23,7 @@ import sys
 import pandas as pd
 from pathlib import Path
 from argparse import ArgumentParser
+import matplotlib.pyplot as plt
 
 model_classes = []
 
@@ -139,7 +140,7 @@ def main(args):
     :return: Nothing
     """
     global metadata, weights_file
-    df_path = str(Path(__file__).parent / args.data)
+    df_path = str(Path(__file__).parent / 'out' / 'datasets' / args.data)
     df = pd.read_csv(df_path, parse_dates=['Timestamp'])
 
     created_models = []
@@ -191,7 +192,12 @@ def main(args):
 
         predictions = model.predict(trained_model, **vars(args))
         df[f'{metadata[1]}Predictions'] = predictions
-    print()
+
+    # plot lines
+    plt.plot(df['Temperature'], label="Observed")
+    plt.plot(df[f'{metadata[1]}Predictions'], label="Predicted")
+    plt.legend()
+    plt.show()
 
 
 if __name__ == '__main__':
