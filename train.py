@@ -271,12 +271,10 @@ def main(args, chosen_models):
 
     # TODO Fix WandB logger!
     global metadata, weights_file
-    # logger = None
 
-    # TODO: REMOVE THIS API KEY BEFORE PUSH
-    args.wandb = '188c4a566f0324c6c00aa95e1a4d4f41b9ee1f92'
-    args.wandbteam = 'b4b-cp'
-    args.wandbproject = 'climate-prediction'
+    # args.wandb = ''
+    # args.wandbteam = 'b4b-cp'
+    # args.wandbproject = 'climate-prediction'
 
     if args.wandb is not None and args.wandbteam is not None and args.wandbproject is not None:
         team = args.wandbteam
@@ -366,19 +364,22 @@ def main(args, chosen_models):
 
                     trained_model = model_class.train_model(training, c_model, **vars(args))
 
-                metadata_export_path = None
+                metadata_export_path = (Path(__file__).parent / 'out' / 'models' / f'{name}' / f'{model_id}')
 
                 # Model output changes when WandB is enabled as logger
                 if args.wandb is not None and args.wandbteam is not None and args.wandbproject is not None:
+                    id_generated_dir = os.listdir(metadata_export_path / str(args.wandbproject))[0]
+
                     metadata_export_path = (
-                                Path(__file__).parent / 'out' / 'models' / f'{name}' / f'{model_id}' / 'checkpoints')
+                                metadata_export_path / str(args.wandbproject) / id_generated_dir / 'checkpoints')
+
                 else:
-                    metadata_export_path = (
-                                Path(__file__).parent / 'out' / 'models' / f'{name}' / f'{model_id}' / 'checkpoints')
+                    metadata_export_path = (metadata_export_path / 'checkpoints')
 
                 export_metadata(name, model_id, args, metadata_export_path)
 
-                # model_class.evaluate_model(trained_model, **vars(args))
+                # TODO: Fix evaluation_model
+                model_class.evaluate_model(trained_model, **vars(args))
             else:
                 print(f"Couldn't find model: {name}")
                 quit(102)
