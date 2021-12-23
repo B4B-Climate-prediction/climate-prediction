@@ -68,3 +68,9 @@ class Model:
         """
         raise NotImplementedError()
 
+    def write_metadata(self, configparser):
+        """
+
+        """
+        raise NotImplementedError()
+

@@ -20,6 +20,7 @@ from pytorch_lightning.loggers import WandbLogger
 from utils import config_reader
 
 model_classes = []
+main_config = config_reader.read_main_config()
 
 
 def parse_args():
@@ -144,10 +145,9 @@ def main(args):
             p = Path(__file__).parent.absolute() / model_dir
             for file in os.listdir(p):
                 if file.endswith('.cfg') & file.startswith('metadata'):
-                    metadata = config_reader.read_metadata(p / file)
+                    metadata = config_reader.read_metadata(p / file, loaded_models=model_classes)
                 else:
                     weights_file = p / file
-                    print(p / file)
 
             if metadata is not None:
                 model = find_model(metadata['model'])
@@ -194,8 +194,9 @@ def main(args):
             # model.evaluate_model(trained_model, training, **vars(args))
 
     else:
-        # ToDo: MOVE THIS BS TO CONFIG FILE!
-        configs = config_reader.read_configs(Path(__file__).parent.absolute() / 'configs', loaded_models=model_classes)
+        configs = config_reader.read_configs(Path(main_config['model-configs']).parent.absolute(), loaded_models=model_classes)
+
+        print(configs)
 
         for config in configs:
             model = find_model(config['model'])
@@ -216,10 +217,10 @@ def main(args):
 
                     trained_model = model_class.train_model(training, c_model, **vars(args))
 
-                config_reader.export_metadata(config, df,
-                                              Path(__file__).parent.absolute() / 'out' / 'models' / f'{config["model"]}' / f'{model_id}' / 'checkpoints')
+                config_reader.export_metadata(model_class, df,
+                                              Path(main_config['output-path-mode']).parent.absolute() / f'{config["model"]}' / f'{model_id}' / 'checkpoints')
 
-                #model_class.evaluate_model(trained_model, **vars(args))
+                # model_class.evaluate_model(trained_model, **vars(args))
             else:
                 print(f"Couldn't find model: {config['model']}")
                 quit(102)

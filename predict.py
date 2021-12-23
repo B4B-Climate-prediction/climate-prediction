@@ -132,7 +132,7 @@ def main(args):
         p = Path(__file__).parent / model_dir
         for file in os.listdir(p):
             if file.endswith('.txt') & file.startswith('metadata'):
-                metadata = config_reader.read_metadata(p / file)
+                metadata = config_reader.read_metadata(p / file, loaded_models=model_classes)
             else:
                 weights_file = p / file
 

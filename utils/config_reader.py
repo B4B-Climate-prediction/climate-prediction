@@ -19,65 +19,65 @@ def read_configs(path, loaded_models) -> []:
             'uncats': eval(parser.get('data', 'unknown_categoricals')),
             'knreels': eval(parser.get('data', 'known_reels')),
             'kncats': eval(parser.get('data', 'known_categoricals')),
-            'hyper': eval(parser.get('hyper-tuning', 'hyper')),
-            'trials': eval(parser.get('hyper-tuning', 'trials')),
             'batch': eval(parser.get('training', 'batch')),
-            'epochs': eval(parser.get('training', 'epochs'))
         }
 
         for model in loaded_models:
-            config = dict(ChainMap(config, model.read_config(parser)))
+            config = dict(ChainMap(config, model.read_metadata(parser)))
 
         configs.append(config)
 
     return configs
 
 
-def export_metadata(config, df, pl):
+def export_metadata(model, df, pl):
     """
     Generation of metadata file for the models
 
     :param df: dataframe from dataset
     :param config: configuration on which the model is trained
-    :param model_id: model id
+    :param model: model
     :param pl: saving_path
     :return: [model_name, id, data_source, targets, column_name]
     """
 
-    print(type(config['model']))
+    print(model.metadata)
 
     configparser = ConfigParser()
     configparser.add_section('model')
-    configparser.set(section='model', option="name", value=config['model'])
-    configparser.set(section='model', option="id", value=str(config['id']))
+    configparser.set(section='model', option="name", value=model.metadata['model'])
+    configparser.set(section='model', option="id", value=str(model.model_id))
 
     configparser.add_section('data')
     configparser.set(section='data', option='columns', value=str(list(df.columns.values)))
-    configparser.set(section='data', option='groups', value=str(config['groups']))
-    configparser.set(section='data', option='targets', value=str(config['targets']))
-    configparser.set(section='data', option='unknown-categoricals', value=str(config['uncats']))
-    configparser.set(section='data', option='unknown-reels', value=str(config['unreels']))
-    configparser.set(section='data', option='known-categoricals', value=str(config['kncats']))
-    configparser.set(section='data', option='known-reels', value=str(config['knreels']))
+    configparser.set(section='data', option='groups', value=str(model.metadata['groups']))
+    configparser.set(section='data', option='targets', value=str(model.metadata['targets']))
+    configparser.set(section='data', option='unknown-categoricals', value=str(model.metadata['uncats']))
+    configparser.set(section='data', option='unknown-reels', value=str(model.metadata['unreels']))
+    configparser.set(section='data', option='known-categoricals', value=str(model.metadata['kncats']))
+    configparser.set(section='data', option='known-reels', value=str(model.metadata['knreels']))
 
     configparser.add_section('training')
-    configparser.set(section='training', option='batch-size', value=str(config['batch']))
+    configparser.set(section='training', option='batch-size', value=str(model.metadata['batch']))
 
-    with open(Path(pl) / f'metadata-{datetime.now().strftime("%H%M%S")}-{config["epochs"]}.cfg', 'w') as configfile:
+    model.write_metadata(configparser)
+
+    with open(Path(pl) / f'metadata-{datetime.now().strftime("%H%M%S")}-{model.model_id}.cfg', 'w') as configfile:
         configparser.write(configfile)
 
 
-def read_metadata(file):
+def read_metadata(file, loaded_models) -> {}:
     """
    Reads the metadata file that was generated when the model was trained
 
    :param file: location of the file
+   :param loaded_models: list of models that has been loaded in script
    :return: [model_name, model_id, data_source, targets, column_names]
    """
     configparser = ConfigParser()
     configparser.read(file)
 
-    return {
+    config = {
         'model': configparser.get('model', 'name'),
         'id': configparser.get('model', 'id'),
         'columns': eval(configparser.get('data', 'columns')),
@@ -88,4 +88,23 @@ def read_metadata(file):
         'kncats': eval(configparser.get('data', 'known-categoricals')),
         'knreels': eval(configparser.get('data', 'known-reels')),
         'batch': int(configparser.get('training', 'batch-size'))
+    }
+
+    for model in loaded_models:
+        config = dict(ChainMap(config, model.read_metadata(configparser)))
+
+    return config
+
+
+def read_main_config():
+    configparser = ConfigParser()
+    configparser.read(Path(__file__).parent.parent.absolute() / 'config.cfg')
+
+    return {
+        'wandb-key': configparser.get(section='wandb', option='wandb-key'),
+        'wandb-project': configparser.get(section='wandb', option='wandb-project'),
+        'wandb-team': configparser.get(section='wandb', option='wandb-team'),
+        'output-path-data': configparser.get(section='output', option='output-path-data'),
+        'output-path-mode': configparser.get(section='output', option='output-path-mode'),
+        'model-configs': configparser.get(section='input', option='input-model-configs')
     }

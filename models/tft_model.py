@@ -20,13 +20,7 @@ class Tft(Model, ABC):
 
     name = "Tft"
 
-    read_config = lambda config_reader: {
-        'encoder_length': config_reader.read('training', 'encoder_length')
-    }
-
-    write_config = lambda config_writer: {
-
-    }
+    read_metadata = lambda configparser: read_metadata(configparser)
 
     def __init__(self, model_id, metadata, data):
         super().__init__(model_id, metadata, data)
@@ -228,3 +222,13 @@ class Tft(Model, ABC):
         :return: TemporalFusionTransformer
         """
         return TemporalFusionTransformer.load_from_checkpoint(path)
+
+    def write_metadata(self, configparser):
+        configparser.set(section='training', option='encoder-length', value=str(self.metadata['encoder-length']))
+
+
+def read_metadata(configparser):
+    if configparser.has_option('training', 'encoder-length'):
+        return {
+            'encoder-length': eval(configparser.get('training', 'encoder-length'))
+        }
