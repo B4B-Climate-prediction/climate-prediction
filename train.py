@@ -162,8 +162,8 @@ def export_metadata(model_name, model_id, args, pl):
     """
 
     # Retrieve dataset
-    path = str(Path(__file__).parent / args.data)
-    df = pd.read_csv(path)
+    df_path = str(Path(__file__).parent / 'out' / 'datasets' / args.data)
+    df = pd.read_csv(df_path, parse_dates=['Timestamp'])
 
     # Get columns names from dataset
     column_names = list(df.columns.values)
@@ -352,7 +352,7 @@ def main(args, chosen_models):
                 export_metadata(name, model_id, args,
                                 (Path(__file__).parent / 'out' / 'models' / f'{name}' / f'{model_id}' / 'checkpoints'))
 
-                model_class.evaluate_model(trained_model, **vars(args))
+                # model_class.evaluate_model(trained_model, **vars(args))
             else:
                 print(f"Couldn't find model: {name}")
                 quit(102)

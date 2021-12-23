@@ -23,6 +23,8 @@ class Tft(Model, ABC):
 
     def __init__(self, model_id, data):
         super().__init__(model_id, data)
+        self.max_prediction_length = 6
+        self.max_encoder_length = 24
 
     def generate_time_series_dataset(self, **kwargs):
         """
@@ -48,10 +50,10 @@ class Tft(Model, ABC):
             target=target,
             time_idx='Index',
             group_ids=kwargs['groups'],
-            min_encoder_length=0,
-            max_encoder_length=27,  # Zoek deze onzin nog uit!
+            min_encoder_length=1,
+            max_encoder_length=self.max_encoder_length,
             min_prediction_length=1,
-            max_prediction_length=1,
+            max_prediction_length=self.max_prediction_length,
             time_varying_known_categoricals=kwargs['kncats'],
             time_varying_known_reals=kwargs['knreels'],
             time_varying_unknown_categoricals=kwargs['uncats'],
@@ -110,12 +112,13 @@ class Tft(Model, ABC):
             # logger=kwargs['logger'] WANDB
         )
 
-        trainer.fit(created_model,
-                    train_dataloaders=train_dataloader,
-                    val_dataloaders=val_dataloader
-                    )
+        trainer.fit(
+            created_model,
+            train_dataloaders=train_dataloader,
+            val_dataloaders=val_dataloader
+        )
 
-        #torch.save(created_model.state_dict(), os.path.join(Path(__file__).parent.parent / 'out' / 'models' / 'tft', 'weights.ckpt'))
+        # torch.save(created_model.state_dict(), os.path.join(Path(__file__).parent.parent / 'out' / 'models' / 'tft', 'weights.ckpt'))
 
         return trainer  # should return something that is obtainable by wandb!
 
@@ -128,23 +131,34 @@ class Tft(Model, ABC):
         :return: predicted targets
         """
 
-        encoder_length = 27
-
-        predictions = [None for _ in range(encoder_length)]
+        predictions = [None for _ in range(self.max_encoder_length)]
 
         for j_lower in range(len(self.data)):
-            j_upper = j_lower + encoder_length
+            j_upper = j_lower + self.max_encoder_length
 
             if j_upper > (len(self.data) - 1):
                 break
 
             encoder_data = self.data[j_lower:j_upper]
 
-            last_data = encoder_data[lambda x: x.Index == x.Index.max()]
+            last_data = encoder_data[lambda x: x.Index == x.Index.max()].copy()
+
+            for column in last_data.columns:
+                if column in kwargs['targets']:  # wrong
+                    continue
+                if (column == 'Timestamp') or (column == 'Index'):
+                    continue
+
+                last_data.loc[last_data.Index.max(), column] = None
 
             unit = kwargs["timeunit"][1]  # E.g. 'minutes'
             value = int(kwargs['timeunit'][0])  # E.g. 10
-            decoder_data = last_data.assign(Timestamp=lambda y: y.Timestamp + pd.DateOffset(**{unit: value}))
+
+            decoder_data = pd.concat(
+                [last_data.assign(Timestamp=lambda y: y.Timestamp + pd.DateOffset(**{unit: value * i})) for i in
+                 range(1, self.max_prediction_length + 1)],
+                ignore_index=True,
+            )
 
             # add time index consistent with "data"
             decoder_data["Index"] += encoder_data["Index"].max() + decoder_data.index + 1 - decoder_data["Index"].min()
@@ -155,6 +169,10 @@ class Tft(Model, ABC):
             predictions.append((model_.predict(new_prediction_data)[0][0]).item())
 
         return predictions
+        # temp = model_.predict(self.data)
+        # print()
+        #
+        # return None
 
     def tune_hyper_parameter(self, dataset, **kwargs):  # Add clean up after the creation of the best trial!
         """
