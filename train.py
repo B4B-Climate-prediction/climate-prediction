@@ -76,7 +76,7 @@ def find_model(name):
     Finds the model based on name. If none exists it will return None
 
     :param name: model_name
-    :return:
+    :return: model
     """
     for model in model_classes:
         if str(model.name) == str(name):
