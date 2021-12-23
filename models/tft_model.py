@@ -22,6 +22,8 @@ class Tft(Model, ABC):
 
     read_metadata = lambda configparser: read_metadata(configparser)
 
+    generate_config = lambda configparser: generate_config(configparser)
+
     def __init__(self, model_id, metadata, data):
         super().__init__(model_id, metadata, data)
         self.max_prediction_length = 6
@@ -257,3 +259,7 @@ def read_metadata(configparser):
         return {
             'encoder-length': eval(configparser.get('training', 'encoder-length'))
         }
+
+
+def generate_config(configparser):
+    configparser.set(section='training', option='encoder-length', value='0')
