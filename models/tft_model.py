@@ -194,7 +194,7 @@ class Tft(Model, ABC):
         study = optimize_hyperparameters(
             train_dataloader=train_dataloader,
             val_dataloader=val_dataloader,
-            model_path=Path(__file__) / kwargs['model'],
+            model_path='../hyp_tuning',
             max_epochs=kwargs['epochs'],
             n_trials=kwargs['trials']
         )
@@ -235,7 +235,6 @@ class Tft(Model, ABC):
 
         :return: DataLoaders
         """
-
         validation = TimeSeriesDataSet.from_dataset(dataset, self.data, predict=True, stop_randomization=True)
 
         return dataset.to_dataloader(train=True, batch_size=self.metadata['batch'], num_workers=2,

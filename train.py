@@ -219,7 +219,7 @@ def main(args):
                 training = model_class.generate_time_series_dataset()
 
                 if args.hyper:
-                    trained_model = model_class.tune_hyper_parameter(df, **vars(args))
+                    trained_model = model_class.tune_hyper_parameter(training, **vars(args))
                 else:
                     c_model = model_class.generate_model(training)
 
