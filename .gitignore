@@ -2,7 +2,5 @@
 .vscode/
 .ipynb_checkpoints/
 __pycache__/
-
-metadata/*.txt
-lightning_logs/
 wandb/
+out/

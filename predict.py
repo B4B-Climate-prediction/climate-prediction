@@ -25,6 +25,8 @@ from pathlib import Path
 from argparse import ArgumentParser
 import matplotlib.pyplot as plt
 
+from utils import config_reader
+
 model_classes = []
 
 
@@ -68,25 +70,29 @@ def parse_args():
         help='Specify the timeunit difference between rows. Default: [10, minutes]'
     )
 
-    for model in model_classes:
-        parser.add_argument(model.name)
-        model.add_arguments(parser)
-
     return parser.parse_args()
 
 
-def read_metadata(file):
+def check_compatability(df, columns):
     """
-    Reads the metadata file that was generated when the model was trained
+    Checks whether or not the model is can be used to predict a forecast based on the data that was provided
 
-    :param file: location of the file
-    :return: [model_name, model_id, data_source, targets, column_names]
+    :param df: Dataframe that is loaded in for predicting or training
+    :param columns: columns in the metadata that was generated for model
+    :return: Boolean, [missing_columns]
     """
-    with open(file, 'r+') as f:
-        lines = f.readlines()
-        f.close()
+    df_columns = list(df.columns.values)
 
-    return [lines[0].strip(), lines[1].strip(), lines[2], eval(lines[3]), eval(lines[4])]
+    missing_columns = []
+
+    compatability = True
+
+    for column in columns:
+        if not df_columns.__contains__(column):
+            missing_columns.append(column)
+            compatability = False
+
+    return compatability, missing_columns
 
 
 def find_model(name):
@@ -97,30 +103,8 @@ def find_model(name):
     :return:
     """
     for model in model_classes:
-        if str(model.name).lower() == str(name).lower():
+        if str(model.name) == str(name):
             return model
-
-
-def check_compatability(df, metadata):
-    """
-    Checks whether or not the model is can be used to predict a forecast based on the data that was provided
-
-    :param df: Dataframe that is loaded in for predicting or training
-    :param metadata: metadata that was generated for model
-    :return: Boolean, [missing_columns]
-    """
-    columns = list(df.columns.values)
-
-    missing_columns = []
-
-    compatability = True
-
-    for column in metadata[4]:
-        if not columns.__contains__(column):
-            missing_columns.append(column)
-            compatability = False
-
-    return compatability, missing_columns
 
 
 def main(args):
@@ -148,21 +132,21 @@ def main(args):
         p = Path(__file__).parent / model_dir
         for file in os.listdir(p):
             if file.endswith('.txt') & file.startswith('metadata'):
-                metadata = read_metadata(p / file)
+                metadata = config_reader.read_metadata(p / file, loaded_models=model_classes)
             else:
                 weights_file = p / file
 
         if metadata is not None:
-            model_ = find_model(metadata[0])
+            model_ = find_model(metadata['model'])
 
             if model_ is None:
-                print(f"Couldn't find model: {metadata[0]}")
+                print(f"Couldn't find model: {metadata['model']}")
                 quit(101)
                 break
 
-            model_class_ = model_(metadata[1], df)
+            model_class_ = model_(metadata['id'], metadata, df)
 
-            compatability, missing_columns = check_compatability(df, metadata)
+            compatability, missing_columns = check_compatability(df, metadata['columns'])
 
             if not compatability:
                 print(
@@ -171,7 +155,7 @@ def main(args):
                 break
 
             if weights_file is None:
-                print(f'Cannot find weights file: {metadata[0]}')
+                print(f'Cannot find weights file: {metadata["id"]}')
                 quit(104)
                 break
 
