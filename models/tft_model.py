@@ -1,12 +1,11 @@
 """A pytorch implementation to train, load & predict a forecasting model"""
-import ast
+
 import os
 import pickle
 import pandas as pd
 from abc import ABC
 from pathlib import Path
 
-from pandas import DateOffset
 from pytorch_forecasting import TemporalFusionTransformer, QuantileLoss, TimeSeriesDataSet
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 from pytorch_lightning import Trainer
@@ -150,7 +149,7 @@ class Tft(Model, ABC):
             last_data = encoder_data[lambda x: x.Index == x.Index.max()].copy()
 
             for column in last_data.columns:
-                if column in kwargs['targets']:  # wrong
+                if column in self.metadata['targets']:
                     continue
                 if (column == 'Timestamp') or (column == 'Index'):
                     continue
