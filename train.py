@@ -2,38 +2,25 @@
 A training file that can take multiple models, train them and evaluate them.
 
 Command-arguments:
-    -w [--WANDB]: API Key for WandB
     -d [--DATA]: Data file path, must be a .csv file.
-    -t [--TARGETS]: columns of the data that need to be predicted
-    -g [--GROUPS]: groups in datasets
-    -kr [--KNREELS]: Known reels features in dataset (Also known in the future). Default: []
-    -kc [--KNCATS]: Known categorical features in dataset (also know in the future). Default: []
-    -ur [--UNREELS]: Unknown reel features in dataset. Default: []
-    -uc [--UNCATS]: Unknown categorical features in dataset. Default: []
     -m [--MODEL]: Model file paths, must be a file. If specified it will continue training that model.
-    -hy [--HYPER]: hypertunes the model if specified, this will take a long time.
-    -e [--EPOCHS]: Amount of epochs to train. Default: 100
-    -b [--BATCH]: Batch size during training. Default: 128
-    -tr [--TRAILS]: The amount of times the hypertuning generates new hyper parameters to train the model. Default: 100
 """
 
 import importlib
 import inspect
-import sys
-import uuid
-
-import wandb
 import os
-import pandas as pd
+import uuid
 from argparse import ArgumentParser
-from datetime import datetime
-
 from pathlib import Path
-import model as ml
 
+import pandas as pd
+import wandb
 from pytorch_lightning.loggers import WandbLogger
 
+from utils import config_reader
+
 model_classes = []
+main_config = config_reader.read_main_config()
 
 
 def parse_args():
@@ -47,76 +34,10 @@ def parse_args():
     parser = ArgumentParser(add_help=True)
 
     parser.add_argument(
-        '-w', '--wandb',
-        type=str,
-        help='API key for WandB'
-    )
-
-    parser.add_argument(
-        '-wt', '--wandbteam',
-        type=str,
-        help='Team name for WandB'
-    )
-
-    parser.add_argument(
-        '-wp' '--wandbproject',
-        type=str,
-        help='Project name for WandB'
-    )
-
-    parser.add_argument(
         '-d', '--data',
         required=True,
         type=str,
         help='Data file path, must be a .csv file in the out/datasets directory.'
-    )
-
-    parser.add_argument(
-        '-t', '--targets',
-        required=True,
-        action='extend',
-        nargs='+',
-        help='Target feature(s) in dataset, specify minimal one'
-    )
-
-    parser.add_argument(
-        '-g', '--groups',
-        required=True,
-        action='extend',
-        nargs='+',
-        help='Groups in dataset, specify minimal one'
-    )
-
-    parser.add_argument(
-        '-kr', '--knreels',
-        action='extend',
-        nargs='*',
-        default=[],
-        help='Known reels features in dataset (also known in the future). Default: []'
-    )
-
-    parser.add_argument(
-        '-kc', '--kncats',
-        action='extend',
-        nargs='*',
-        default=[],
-        help='Known categoricals features in dataset (also known in the future). Default: []'
-    )
-
-    parser.add_argument(
-        '-ur', '--unreels',
-        action='extend',
-        nargs='*',
-        default=[],
-        help='Unknown reels features in dataset. Default: []'
-    )
-
-    parser.add_argument(
-        '-uc', '--uncats',
-        action='extend',
-        nargs='*',
-        default=[],
-        help='Unknown categoricals features in dataset. Default: []'
     )
 
     parser.add_argument(
@@ -128,23 +49,10 @@ def parse_args():
     )
 
     parser.add_argument(
-        '-hy', '--hyper',
-        action='store_true',
-        help='Hypertunes the model if specified, this will take a long time'
-    )
-
-    parser.add_argument(
         '-e', '--epochs',
         default=100,
         type=int,
         help='Amount of epochs to training. Default: 100'
-    )
-
-    parser.add_argument(
-        '-b', '--batch',
-        default=128,
-        type=int,
-        help='Batch size during training. Default: 128'
     )
 
     parser.add_argument(
@@ -155,59 +63,13 @@ def parse_args():
              'will maximally run before coming to the best results. Default: 100 '
     )
 
-    for model in model_classes:
-        parser.add_argument(model.name)
-        model.add_arguments(parser)
+    parser.add_argument(
+        '-hy', '--hyper',
+        action='store_true',
+        help='Hypertunes the model if specified, this will take a long time'
+    )
 
     return parser.parse_args()
-
-
-def export_metadata(model_name, model_id, args, pl):
-    """
-    Generation of metadata file for the models
-
-    :param model_name: name of the model
-    :param model_id: model id
-    :param args: arguments from command
-    :param pl: saving_path
-    :return: [model_name, id, data_source, targets, column_name]
-    """
-
-    # Retrieve dataset
-    path = str(Path(__file__).parent / args.data)
-    df = pd.read_csv(path)
-
-    # Get columns names from dataset
-    column_names = list(df.columns.values)
-
-    metadata = [model_name, model_id, args.data, args.targets, column_names]
-
-    # Create name for metadata file
-    time = datetime.now().strftime('%H%M%S')
-    name = f'metadata-{time}-{args.epochs}.txt'
-
-    export_path = Path(pl) / name
-
-    f = open(export_path, 'w+')
-
-    for meta in metadata:
-        f.write(str(meta) + '\n')
-
-    f.close()
-
-
-def read_metadata(file):
-    """
-   Reads the metadata file that was generated when the model was trained
-
-   :param file: location of the file
-   :return: [model_name, model_id, data_source, targets, column_names]
-   """
-    f = open(file, 'r+')
-
-    lines = f.readlines()
-
-    return [lines[0].strip(), lines[1].strip(), lines[2], eval(lines[3]), eval(lines[4])]
 
 
 def find_model(name):
@@ -215,41 +77,40 @@ def find_model(name):
     Finds the model based on name. If none exists it will return None
 
     :param name: model_name
-    :return:
+    :return: model
     """
     for model in model_classes:
         if str(model.name) == str(name):
             return model
 
 
-def check_compatability(df, metadata):
+def check_compatability(df, columns):
     """
     Checks whether or not the model is can be used to predict a forecast based on the data that was provided
 
     :param df: Dataframe that is loaded in for predicting or training
-    :param metadata: metadata that was generated for model
+    :param columns: columns in the metadata that was generated for model
     :return: Boolean, [missing_columns]
     """
-    columns = list(df.columns.values)
+    df_columns = list(df.columns.values)
 
     missing_columns = []
 
     compatability = True
 
-    for column in metadata[4]:
-        if not columns.__contains__(column):
+    for column in columns:
+        if not df_columns.__contains__(column):
             missing_columns.append(column)
             compatability = False
 
     return compatability, missing_columns
 
 
-def main(args, chosen_models):
+def main(args):
     """
     The main method that runs whenever the file is being used.
 
     :param args: the arguments in the command.
-    :param chosen_models: the models have been specified in the command
 
     This method loops through the chosen models and executes
 
@@ -272,10 +133,12 @@ def main(args, chosen_models):
     # TODO Fix WandB logger!
     global metadata, weights_file
 
+
     # args.wandb = ''
     # args.wandbteam = 'b4b-cp'
     # args.wandbproject = 'climate-prediction'
 
+    # ToDo: Fix
     if args.wandb is not None and args.wandbteam is not None and args.wandbproject is not None:
         team = args.wandbteam
         project = args.wandbproject
@@ -295,24 +158,24 @@ def main(args, chosen_models):
         files = []
 
         for model_dir in args.model:
-            p = Path(__file__).parent / model_dir
+            p = Path(__file__).parent.absolute() / model_dir
             for file in os.listdir(p):
-                if file.endswith('.txt') & file.startswith('metadata'):
-                    metadata = read_metadata(p / file)
+                if file.endswith('.cfg') & file.startswith('metadata'):
+                    metadata = config_reader.read_metadata(p / file, loaded_models=model_classes)
                 else:
                     weights_file = p / file
 
             if metadata is not None:
-                model = find_model(metadata[0])
+                model = find_model(metadata['model'])
 
                 if model is None:
-                    print(f"Couldn't find model: {metadata[0]}")
+                    print(f"Couldn't find model: {metadata['model']}")
                     quit(101)
                     break
 
-                model_class = model(metadata[1], df)
+                model_class = model(metadata['id'], metadata, df)
 
-                compatability, missing_columns = check_compatability(df, metadata)
+                compatability, missing_columns = check_compatability(df, metadata['columns'])
 
                 if not compatability:
                     print(
@@ -320,8 +183,8 @@ def main(args, chosen_models):
                     quit(102)
                     break
 
-                if weights_file is not None:
-                    print(f'Cannot find model file of model: {metadata[0]}')
+                if weights_file is None:
+                    print(f'Cannot find weights-file for model: {metadata["id"]}')
                     quit(104)
                     break
 
@@ -332,13 +195,13 @@ def main(args, chosen_models):
                 quit(103)
                 break
 
-        for index in range(0, len(created_models) - 1):
+        for index in range(0, len(created_models)):
             model = created_models[index]
             file = files[index]
 
-            training = model.generate_time_series_dataset(**vars(args))
+            training = model.generate_time_series_dataset()
 
-            trained_model = model.load_model(file, **vars(args))
+            trained_model = model.load_model(file)
 
             os.remove(file)
 
@@ -347,56 +210,46 @@ def main(args, chosen_models):
             # model.evaluate_model(trained_model, training, **vars(args))
 
     else:
-        for name in chosen_models:
-            model = find_model(name)
+        configs = config_reader.read_configs(Path(main_config['model-configs']).parent.absolute(), loaded_models=model_classes)
+
+        for config in configs:
+            model = find_model(config['model'])
 
             if model is not None:
                 model_id = uuid.uuid4()
 
-                model_class = model(model_id, df)
+                config['id'] = model_id
 
-                training = model_class.generate_time_series_dataset(**vars(args))
+                model_class = model(model_id, config, df)
+
+                training = model_class.generate_time_series_dataset()
 
                 if args.hyper:
                     trained_model = model_class.tune_hyper_parameter(df, **vars(args))
                 else:
-                    c_model = model_class.generate_model(training, **vars(args))
+                    c_model = model_class.generate_model(training)
 
                     trained_model = model_class.train_model(training, c_model, **vars(args))
 
-                metadata_export_path = (Path(__file__).parent / 'out' / 'models' / f'{name}' / f'{model_id}')
+                metadata_export_path = Path(main_config['']).absolute() / f'{model_class.name}' / f'{model_id}'
 
                 # Model output changes when WandB is enabled as logger
-                if args.wandb is not None and args.wandbteam is not None and args.wandbproject is not None:
+                if main_config['wandb'] is not None and main_config['wandb-team'] is not None and main_config['wandb-project'] is not None:
                     id_generated_dir = os.listdir(metadata_export_path / str(args.wandbproject))[0]
 
-                    metadata_export_path = (
-                                metadata_export_path / str(args.wandbproject) / id_generated_dir / 'checkpoints')
+                    metadata_export_path = (metadata_export_path / str(args.wandbproject) / id_generated_dir / 'checkpoints')
 
                 else:
                     metadata_export_path = (metadata_export_path / 'checkpoints')
 
-                export_metadata(name, model_id, args, metadata_export_path)
-
-                # TODO: Fix evaluation_model
-                model_class.evaluate_model(trained_model, **vars(args))
+                config_reader.export_metadata(model_class, df, metadata_export_path)
             else:
-                print(f"Couldn't find model: {name}")
+                print(f"Couldn't find model: {config['model']}")
                 quit(102)
                 break
 
 
 if __name__ == '__main__':
-    models = []
-
-    for i in range(1, len(sys.argv)):
-        arg = sys.argv[i]
-
-        if arg.startswith('-') | arg.startswith('--'):
-            break
-
-        models.append(arg)
-
     # search models in folder
     package_dir = Path(__file__).parent / 'models'
 
@@ -408,7 +261,7 @@ if __name__ == '__main__':
             model_classes.append(Model)
             print(f"{Model.name} model has been loaded in")
 
-    main(parse_args(), models)
+    main(parse_args())
 
 # Check names of the loaded models with the corresponding folder
 # Load metadata into train.py and predict.py for checking

@@ -1,5 +1,0 @@
-Tft
-2a093e14-1369-4ac5-833e-7a759e0e76eb
-093938-10min.csv
-['Temperature']
-['Timestamp', 'Temperature', 'Humidity', 'WaveLength1', 'WaveLength2', 'Occupants', 'Activity', 'DoorState', 'WindowState', 'Group', 'Index']
