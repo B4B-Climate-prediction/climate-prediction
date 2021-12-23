@@ -231,10 +231,10 @@ def main(args):
 
                     trained_model = model_class.train_model(training, c_model, **vars(args))
 
-                metadata_export_path = Path(main_config['']).absolute() / f'{model_class.name}' / f'{model_id}')
+                metadata_export_path = Path(main_config['']).absolute() / f'{model_class.name}' / f'{model_id}'
 
                 # Model output changes when WandB is enabled as logger
-                if args.wandb is not None and args.wandbteam is not None and args.wandbproject is not None:
+                if main_config['wandb'] is not None and main_config['wandb-team'] is not None and main_config['wandb-project'] is not None:
                     id_generated_dir = os.listdir(metadata_export_path / str(args.wandbproject))[0]
 
                     metadata_export_path = (metadata_export_path / str(args.wandbproject) / id_generated_dir / 'checkpoints')
@@ -242,11 +242,7 @@ def main(args):
                 else:
                     metadata_export_path = (metadata_export_path / 'checkpoints')
 
-                # model_class.evaluate_model(trained_model, **vars(args))
-                config_reader.export_metadata(model_class, df , metadata_export_path)
-
-                # TODO: Fix evaluation_model
-                model_class.evaluate_model(trained_model, **vars(args))
+                config_reader.export_metadata(model_class, df, metadata_export_path)
             else:
                 print(f"Couldn't find model: {config['model']}")
                 quit(102)
