@@ -130,8 +130,24 @@ def main(args):
     :return: Nothing
     """
 
-    # TODO Fix WandB logger! Move this bs
+    # TODO Fix WandB logger!
     global metadata, weights_file
+
+
+    # args.wandb = ''
+    # args.wandbteam = 'b4b-cp'
+    # args.wandbproject = 'climate-prediction'
+
+    # ToDo: Fix
+    if args.wandb is not None and args.wandbteam is not None and args.wandbproject is not None:
+        team = args.wandbteam
+        project = args.wandbproject
+
+        # logger = WandbLogger(project=project)
+        os.environ['WANDB_API_KEY'] = args.wandb
+
+        wandb.init(project=project, entity=team)
+        wandb.login()
 
     path = str(Path(__file__).parent / args.data)
     df = pd.read_csv(path)
@@ -196,8 +212,6 @@ def main(args):
     else:
         configs = config_reader.read_configs(Path(main_config['model-configs']).parent.absolute(), loaded_models=model_classes)
 
-        print(configs)
-
         for config in configs:
             model = find_model(config['model'])
 
@@ -217,10 +231,22 @@ def main(args):
 
                     trained_model = model_class.train_model(training, c_model, **vars(args))
 
-                config_reader.export_metadata(model_class, df,
-                                              Path(main_config['output-path-mode']).parent.absolute() / f'{config["model"]}' / f'{model_id}' / 'checkpoints')
+                metadata_export_path = Path(main_config['']).absolute() / f'{model_class.name}' / f'{model_id}')
+
+                # Model output changes when WandB is enabled as logger
+                if args.wandb is not None and args.wandbteam is not None and args.wandbproject is not None:
+                    id_generated_dir = os.listdir(metadata_export_path / str(args.wandbproject))[0]
+
+                    metadata_export_path = (metadata_export_path / str(args.wandbproject) / id_generated_dir / 'checkpoints')
+
+                else:
+                    metadata_export_path = (metadata_export_path / 'checkpoints')
 
                 # model_class.evaluate_model(trained_model, **vars(args))
+                config_reader.export_metadata(model_class, df , metadata_export_path)
+
+                # TODO: Fix evaluation_model
+                model_class.evaluate_model(trained_model, **vars(args))
             else:
                 print(f"Couldn't find model: {config['model']}")
                 quit(102)
