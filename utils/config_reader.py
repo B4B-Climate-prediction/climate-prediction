@@ -122,10 +122,11 @@ def read_main_config():
     configparser.read(Path(__file__).parent.parent.absolute() / 'config.cfg')
 
     return {
+        'wandb': configparser.get(section='wandb', option='wandb') == 'true',
         'wandb-key': configparser.get(section='wandb', option='wandb-key'),
         'wandb-project': configparser.get(section='wandb', option='wandb-project'),
         'wandb-team': configparser.get(section='wandb', option='wandb-team'),
         'output-path-data': configparser.get(section='output', option='output-path-data'),
-        'output-path-mode': configparser.get(section='output', option='output-path-mode'),
+        'output-path-model': configparser.get(section='output', option='output-path-model'),
         'model-configs': configparser.get(section='input', option='input-model-configs')
     }

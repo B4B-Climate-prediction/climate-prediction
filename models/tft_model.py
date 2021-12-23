@@ -13,6 +13,7 @@ from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.loggers import WandbLogger
 
 from model import Model
+from utils import config_reader
 
 
 class Tft(Model, ABC):
@@ -21,13 +22,13 @@ class Tft(Model, ABC):
     name = "Tft"
 
     read_metadata = lambda configparser: read_metadata(configparser)
-
     generate_config = lambda configparser: generate_config(configparser)
 
     def __init__(self, model_id, metadata, data):
         super().__init__(model_id, metadata, data)
         self.max_prediction_length = 6
         self.max_encoder_length = 24
+        self.main_config = config_reader.read_main_config()
 
     def generate_time_series_dataset(self):
         """
@@ -104,9 +105,8 @@ class Tft(Model, ABC):
         train_dataloader, val_dataloader = self.create_data_loaders(dataset)
 
         logger = False
-
-        if kwargs['wandb'] is not None and kwargs['wandbproject'] is not None:
-            logger = WandbLogger(project=kwargs['wandbproject'])
+        if (self.main_config['wandb']) and (self.main_config['wandb-project'] is not None):
+            logger = WandbLogger(project=kwargs['wandb-project'])
 
         trainer = Trainer(
             max_epochs=kwargs['epochs'],
@@ -153,7 +153,7 @@ class Tft(Model, ABC):
             for column in last_data.columns:
                 if column in self.metadata['targets']:
                     continue
-                if (column == 'Timestamp') or (column == 'Index'):
+                if (column == 'Timestamp') or (column == 'Index') or (column == 'Group'):
                     continue
 
                 last_data.loc[last_data.Index.max(), column] = None
