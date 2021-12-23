@@ -27,8 +27,6 @@ def parse_args():
     """
     Parse the arguments from the command using argparse
 
-    :param models: the models being used by the command
-
     :return: argument-parser
     """
     parser = ArgumentParser(add_help=True)

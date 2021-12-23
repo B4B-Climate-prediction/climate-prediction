@@ -30,6 +30,30 @@ def read_configs(path, loaded_models) -> []:
     return configs
 
 
+def write_config(model):
+    main_config = read_main_config()
+
+    configparser = ConfigParser()
+    configparser.add_section('model')
+    configparser.set(section='model', option="name", value=model.name)
+
+    configparser.add_section('data')
+    configparser.set(section='data', option='groups', value=str([]))
+    configparser.set(section='data', option='targets', value=str([]))
+    configparser.set(section='data', option='unknown-categoricals', value=str([]))
+    configparser.set(section='data', option='unknown-reels', value=str([]))
+    configparser.set(section='data', option='known-categoricals', value=str([]))
+    configparser.set(section='data', option='known-reels', value=str([]))
+
+    configparser.add_section('training')
+    configparser.set(section='training', option='batch-size', value=str(0))
+
+    model.generate_config(configparser)
+
+    with open(Path(main_config['model-configs']) / f'model_{model.name}.cfg', 'w') as configfile:
+        configparser.write(configfile)
+
+
 def export_metadata(model, df, pl):
     """
     Generation of metadata file for the models
@@ -40,9 +64,6 @@ def export_metadata(model, df, pl):
     :param pl: saving_path
     :return: [model_name, id, data_source, targets, column_name]
     """
-
-    print(model.metadata)
-
     configparser = ConfigParser()
     configparser.add_section('model')
     configparser.set(section='model', option="name", value=model.metadata['model'])
