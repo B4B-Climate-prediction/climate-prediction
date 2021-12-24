@@ -108,6 +108,14 @@ def find_model(name):
 
 
 def plot_predictions(observed, predicted):
+    """
+    Plots the observed and predicted datapoints
+
+    :param observed: observed list of data points
+    :param predicted: predicted list of data points
+
+    :return:
+    """
     plt.plot(observed, label="Observed")
     plt.plot(predicted, label="Predicted")
     plt.legend()
@@ -179,10 +187,10 @@ def main(args):
         model = created_models[index]
         trained_model = model.load_model(file, **vars(args))
 
-        column_observed_name = model.metadata['targets'][0]
-        column_prediction_name = f'{model.metadata["id"]}-{model.metadata["targets"][0]}'
-
         predictions = model.predict(trained_model, **vars(args))
+
+        column_observed_name = model.metadata['targets'][0]
+        column_prediction_name = f'{model.metadata["id"]}-{column_observed_name}'
         df[column_prediction_name] = predictions
 
         plot_predictions(
