@@ -15,7 +15,6 @@ from pathlib import Path
 
 import pandas as pd
 import wandb
-from pytorch_lightning.loggers import WandbLogger
 
 from utils import config_reader
 
@@ -131,24 +130,21 @@ def main(args):
     # TODO Fix WandB logger!
     global metadata, weights_file
 
+    if main_config['wandb']:
+        print('Using WandB')
+        if main_config['wandb-key'] is not None and main_config['wandb-team'] is not None and main_config['wandb-project'] is not None:
+            os.environ['WANDB_API_KEY'] = main_config['wandb-key']
 
-    # args.wandb = ''
-    # args.wandbteam = 'b4b-cp'
-    # args.wandbproject = 'climate-prediction'
+            wandb.init(project=main_config['wandb-project'], entity=main_config['wandb-team'])
+            wandb.login()
+            print('Successfully logged in WandB')
+        else:
+            print('Incorrect WandB credentials')
+    else:
+        print('Not using WandB')
 
-    # ToDo: Fix
-    if args.wandb is not None and args.wandbteam is not None and args.wandbproject is not None:
-        team = args.wandbteam
-        project = args.wandbproject
-
-        # logger = WandbLogger(project=project)
-        os.environ['WANDB_API_KEY'] = args.wandb
-
-        wandb.init(project=project, entity=team)
-        wandb.login()
-
-    path = str(Path(__file__).parent / args.data)
-    df = pd.read_csv(path)
+    df_path = str(Path(__file__).parent / 'out' / 'datasets' / args.data)
+    df = pd.read_csv(df_path, parse_dates=['Timestamp'])
 
     if len(args.model) != 0:
 
@@ -208,7 +204,7 @@ def main(args):
             # model.evaluate_model(trained_model, training, **vars(args))
 
     else:
-        configs = config_reader.read_configs(Path(main_config['model-configs']).parent.absolute(), loaded_models=model_classes)
+        configs = config_reader.read_configs(Path(main_config['model-configs']).absolute(), loaded_models=model_classes)
 
         for config in configs:
             model = find_model(config['model'])
@@ -229,14 +225,12 @@ def main(args):
 
                     trained_model = model_class.train_model(training, c_model, **vars(args))
 
-                metadata_export_path = Path(main_config['']).absolute() / f'{model_class.name}' / f'{model_id}'
+                metadata_export_path = Path(main_config['output-path-model']).absolute() / f'{model_class.name}' / f'{model_id}'
 
                 # Model output changes when WandB is enabled as logger
-                if main_config['wandb'] is not None and main_config['wandb-team'] is not None and main_config['wandb-project'] is not None:
-                    id_generated_dir = os.listdir(metadata_export_path / str(args.wandbproject))[0]
-
-                    metadata_export_path = (metadata_export_path / str(args.wandbproject) / id_generated_dir / 'checkpoints')
-
+                if (main_config['wandb']) and (main_config['wandb-project'] is not None):
+                    id_generated_dir = os.listdir(metadata_export_path / str(main_config['wandb-project']))[0]
+                    metadata_export_path = (metadata_export_path / str(main_config['wandb-project']) / id_generated_dir / 'checkpoints')
                 else:
                     metadata_export_path = (metadata_export_path / 'checkpoints')
 

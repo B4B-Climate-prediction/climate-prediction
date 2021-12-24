@@ -20,10 +20,10 @@ import inspect
 import os
 import sys
 
-import numpy as np
 import pandas as pd
 from pathlib import Path
 from argparse import ArgumentParser
+import matplotlib.pyplot as plt
 
 from utils import config_reader
 
@@ -64,7 +64,7 @@ def parse_args():
     parser.add_argument(
         '-tu', '--timeunit',
         action='extend',
-        default=['10', 'min'],
+        default=['10', 'minutes'],
         nargs='*',
         required=True,
         help='Specify the timeunit difference between rows. Default: [10, minutes]'
@@ -107,6 +107,13 @@ def find_model(name):
             return model
 
 
+def plot_predictions(observed, predicted):
+    plt.plot(observed, label="Observed")
+    plt.plot(predicted, label="Predicted")
+    plt.legend()
+    plt.show()
+
+
 def main(args):
     """
     The main method that runs whenever the file is being used.
@@ -122,7 +129,7 @@ def main(args):
     :return: Nothing
     """
     global metadata, weights_file
-    df_path = str(Path(__file__).parent / args.data)
+    df_path = str(Path(__file__).parent / 'out' / 'datasets' / args.data)
     df = pd.read_csv(df_path, parse_dates=['Timestamp'])
 
     created_models = []
@@ -131,7 +138,7 @@ def main(args):
     for model_dir in args.model:
         p = Path(__file__).parent / model_dir
         for file in os.listdir(p):
-            if file.endswith('.txt') & file.startswith('metadata'):
+            if file.endswith('.cfg') & file.startswith('metadata'):
                 metadata = config_reader.read_metadata(p / file, loaded_models=model_classes)
             else:
                 weights_file = p / file
@@ -167,14 +174,20 @@ def main(args):
             quit(103)
             break
 
+    column_observed_name = metadata['targets'][0]
+    column_prediction_name = f'{metadata["id"]}-{metadata["targets"][0]}'
     for index in range(0, len(created_models)):
         file = files[index]
         model = created_models[index]
         trained_model = model.load_model(file, **vars(args))
 
         predictions = model.predict(trained_model, **vars(args))
-        df[f'{metadata[1]}Predictions'] = predictions
-        print()
+        df[column_prediction_name] = predictions
+
+    plot_predictions(
+        observed=df[column_observed_name],
+        predicted=df[column_prediction_name]
+    )
 
 
 if __name__ == '__main__':

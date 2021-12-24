@@ -1,12 +1,11 @@
 """A pytorch implementation to train, load & predict a forecasting model"""
-import ast
+
 import os
 import pickle
 import pandas as pd
 from abc import ABC
 from pathlib import Path
 
-from pandas import DateOffset
 from pytorch_forecasting import TemporalFusionTransformer, QuantileLoss, TimeSeriesDataSet
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
 from pytorch_lightning import Trainer
@@ -14,6 +13,7 @@ from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.loggers import WandbLogger
 
 from model import Model
+from utils import config_reader
 
 
 class Tft(Model, ABC):
@@ -22,11 +22,13 @@ class Tft(Model, ABC):
     name = "Tft"
 
     read_metadata = lambda configparser: read_metadata(configparser)
-
     generate_config = lambda configparser: generate_config(configparser)
 
     def __init__(self, model_id, metadata, data):
         super().__init__(model_id, metadata, data)
+        self.max_prediction_length = 1
+        self.max_encoder_length = 24
+        self.main_config = config_reader.read_main_config()
 
     def generate_time_series_dataset(self):
         """
@@ -53,9 +55,9 @@ class Tft(Model, ABC):
             time_idx='Index',
             group_ids=self.metadata['groups'],
             min_encoder_length=0,
-            max_encoder_length=27,  # Zoek deze onzin nog uit!
+            max_encoder_length=self.max_encoder_length,
             min_prediction_length=1,
-            max_prediction_length=1,
+            max_prediction_length=self.max_prediction_length,
             time_varying_known_categoricals=self.metadata['kncats'],
             time_varying_known_reals=self.metadata['knreels'],
             time_varying_unknown_categoricals=self.metadata['uncats'],
@@ -103,9 +105,8 @@ class Tft(Model, ABC):
         train_dataloader, val_dataloader = self.create_data_loaders(dataset)
 
         logger = False
-
-        if kwargs['wandb'] is not None and kwargs['wandbproject'] is not None:
-            logger = WandbLogger(project=kwargs['wandbproject'])
+        if (self.main_config['wandb']) and (self.main_config['wandb-project'] is not None):
+            logger = WandbLogger(project=kwargs['wandb-project'])
 
         trainer = Trainer(
             max_epochs=kwargs['epochs'],
@@ -118,12 +119,13 @@ class Tft(Model, ABC):
             logger=logger
         )
 
-        trainer.fit(created_model,
-                    train_dataloaders=train_dataloader,
-                    val_dataloaders=val_dataloader
-                    )
+        trainer.fit(
+            created_model,
+            train_dataloaders=train_dataloader,
+            val_dataloaders=val_dataloader
+        )
 
-        #torch.save(created_model.state_dict(), os.path.join(Path(__file__).parent.parent / 'out' / 'models' / 'tft', 'weights.ckpt'))
+        # torch.save(created_model.state_dict(), os.path.join(Path(__file__).parent.parent / 'out' / 'models' / 'tft', 'weights.ckpt'))
 
         return trainer  # should return something that is obtainable by wandb!
 
@@ -136,20 +138,26 @@ class Tft(Model, ABC):
         :return: predicted targets
         """
 
-        encoder_length = 27
+        predictions = [None for _ in range(self.max_encoder_length)]
 
-        predictions = [None for _ in range(encoder_length)]
+        unit = kwargs["timeunit"][1]  # E.g. 'minutes'
+        value = int(kwargs['timeunit'][0])  # E.g. 10
 
         for j_lower in range(len(self.data)):
-            j_upper = j_lower + encoder_length
+            j_upper = j_lower + self.max_encoder_length
 
             if j_upper > (len(self.data) - 1):
                 break
 
             encoder_data = self.data[j_lower:j_upper]
 
-            last_data = encoder_data[lambda x: x.Index == x.Index.max()]
-            decoder_data = last_data.assign(Timestamp=lambda y: y.Timestamp + DateOffset(ast.parse('minutes=10')))  # make dynamic
+            last_data = encoder_data[lambda x: x.Index == x.Index.max()].copy()
+
+            decoder_data = pd.concat(
+                [last_data.assign(Timestamp=lambda y: y.Timestamp + pd.DateOffset(**{unit: value * i})) for i in
+                 range(1, self.max_prediction_length + 1)],
+                ignore_index=True,
+            )
 
             # add time index consistent with "data"
             decoder_data["Index"] += encoder_data["Index"].max() + decoder_data.index + 1 - decoder_data["Index"].min()

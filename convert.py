@@ -78,7 +78,7 @@ def main(args):
     if name is None:
         time = datetime.now().strftime('%H%M%S')
         name = f'{time}-{args.resample}'
-    
+
     path = str(Path(__file__).parent / 'out' / 'datasets' / f'{name}.csv')
     df.to_csv(path, index=False)
 
