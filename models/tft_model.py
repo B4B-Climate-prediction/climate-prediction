@@ -26,7 +26,7 @@ class Tft(Model, ABC):
 
     def __init__(self, model_id, metadata, data):
         super().__init__(model_id, metadata, data)
-        self.max_prediction_length = 6
+        self.max_prediction_length = 1
         self.max_encoder_length = 24
         self.main_config = config_reader.read_main_config()
 
@@ -54,7 +54,7 @@ class Tft(Model, ABC):
             target=target,
             time_idx='Index',
             group_ids=self.metadata['groups'],
-            min_encoder_length=1,
+            min_encoder_length=0,
             max_encoder_length=self.max_encoder_length,
             min_prediction_length=1,
             max_prediction_length=self.max_prediction_length,
@@ -140,6 +140,9 @@ class Tft(Model, ABC):
 
         predictions = [None for _ in range(self.max_encoder_length)]
 
+        unit = kwargs["timeunit"][1]  # E.g. 'minutes'
+        value = int(kwargs['timeunit'][0])  # E.g. 10
+
         for j_lower in range(len(self.data)):
             j_upper = j_lower + self.max_encoder_length
 
@@ -149,17 +152,6 @@ class Tft(Model, ABC):
             encoder_data = self.data[j_lower:j_upper]
 
             last_data = encoder_data[lambda x: x.Index == x.Index.max()].copy()
-
-            for column in last_data.columns:
-                if column in self.metadata['targets']:
-                    continue
-                if (column == 'Timestamp') or (column == 'Index') or (column == 'Group'):
-                    continue
-
-                last_data.loc[last_data.Index.max(), column] = None
-
-            unit = kwargs["timeunit"][1]  # E.g. 'minutes'
-            value = int(kwargs['timeunit'][0])  # E.g. 10
 
             decoder_data = pd.concat(
                 [last_data.assign(Timestamp=lambda y: y.Timestamp + pd.DateOffset(**{unit: value * i})) for i in
@@ -176,10 +168,6 @@ class Tft(Model, ABC):
             predictions.append((model_.predict(new_prediction_data)[0][0]).item())
 
         return predictions
-        # temp = model_.predict(self.data)
-        # print()
-        #
-        # return None
 
     def tune_hyper_parameter(self, dataset, **kwargs):  # Add clean up after the creation of the best trial!
         """

@@ -107,6 +107,13 @@ def find_model(name):
             return model
 
 
+def plot_predictions(observed, predicted):
+    plt.plot(observed, label="Observed")
+    plt.plot(predicted, label="Predicted")
+    plt.legend()
+    plt.show()
+
+
 def main(args):
     """
     The main method that runs whenever the file is being used.
@@ -167,19 +174,20 @@ def main(args):
             quit(103)
             break
 
+    column_observed_name = metadata['targets'][0]
+    column_prediction_name = f'{metadata["id"]}-{metadata["targets"][0]}'
     for index in range(0, len(created_models)):
         file = files[index]
         model = created_models[index]
         trained_model = model.load_model(file, **vars(args))
 
         predictions = model.predict(trained_model, **vars(args))
-        df[f'{metadata[1]}Predictions'] = predictions
+        df[column_prediction_name] = predictions
 
-    # plot lines
-    plt.plot(df['Temperature'], label="Observed")
-    plt.plot(df[f'{metadata[1]}Predictions'], label="Predicted")
-    plt.legend()
-    plt.show()
+    plot_predictions(
+        observed=df[column_observed_name],
+        predicted=df[column_prediction_name]
+    )
 
 
 if __name__ == '__main__':
