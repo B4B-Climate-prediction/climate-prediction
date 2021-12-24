@@ -17,20 +17,22 @@ command-arguments:
 
 import importlib
 import inspect
+import os
 import sys
 
 import pandas as pd
 from pathlib import Path
 from argparse import ArgumentParser
+import matplotlib.pyplot as plt
+
+from utils import config_reader
 
 model_classes = []
 
 
-def parse_args(models):
+def parse_args():
     """
     Parse the arguments from the command using argparse
-
-    :param models: the models being used by the command
 
     :return: argument-parser
     """
@@ -45,58 +47,11 @@ def parse_args(models):
     )
 
     parser.add_argument(
-        '-t', '--targets',
-        required=True,
-        action='extend',
-        nargs='+',
-        help='Target feature(s) in dataset, specify minimal one'
-    )
-
-    parser.add_argument(
-        '-g', '--groups',
-        required=True,
-        action='extend',
-        nargs='+',
-        help='Groups in dataset, specify minimal one'
-    )
-
-    parser.add_argument(
-        '-kr', '--knreels',
-        action='extend',
-        nargs='*',
-        default=[],
-        help='Known reels features in dataset (also known in the future). Default: []'
-    )
-
-    parser.add_argument(
-        '-kc', '--kncats',
-        action='extend',
-        nargs='*',
-        default=[],
-        help='Known categoricals features in dataset (also known in the future). Default: []'
-    )
-
-    parser.add_argument(
-        '-ur', '--unreels',
-        action='extend',
-        nargs='*',
-        default=[],
-        help='Unknown reels features in dataset. Default: []'
-    )
-
-    parser.add_argument(
-        '-uc', '--uncats',
-        action='extend',
-        nargs='*',
-        default=[],
-        help='Unknown categoricals features in dataset. Default: []'
-    )
-
-    parser.add_argument(
         '-m', '--model',
-        required=True,
-        type=str,
-        help='Model file paths, must be a (.?) file.'
+        action='extend',
+        nargs='*',
+        default=[],
+        help='Model file paths, must be a (.?) file. If specified this model will be trained'
     )
 
     parser.add_argument(
@@ -109,20 +64,57 @@ def parse_args(models):
     parser.add_argument(
         '-tu', '--timeunit',
         action='extend',
-        default=['10', 'min'],
+        default=['10', 'minutes'],
         nargs='*',
         required=True,
         help='Specify the timeunit difference between rows. Default: [10, minutes]'
     )
 
-    for model in models:
-        parser.add_argument(model.name)
-        model.add_arguments(parser)
-
     return parser.parse_args()
 
 
-def main(args, chosen_models):
+def check_compatability(df, columns):
+    """
+    Checks whether or not the model is can be used to predict a forecast based on the data that was provided
+
+    :param df: Dataframe that is loaded in for predicting or training
+    :param columns: columns in the metadata that was generated for model
+    :return: Boolean, [missing_columns]
+    """
+    df_columns = list(df.columns.values)
+
+    missing_columns = []
+
+    compatability = True
+
+    for column in columns:
+        if not df_columns.__contains__(column):
+            missing_columns.append(column)
+            compatability = False
+
+    return compatability, missing_columns
+
+
+def find_model(name):
+    """
+    Finds the model based on name. If none exists it will return None
+
+    :param name: model_name
+    :return:
+    """
+    for model in model_classes:
+        if str(model.name) == str(name):
+            return model
+
+
+def plot_predictions(observed, predicted):
+    plt.plot(observed, label="Observed")
+    plt.plot(predicted, label="Predicted")
+    plt.legend()
+    plt.show()
+
+
+def main(args):
     """
     The main method that runs whenever the file is being used.
 
@@ -136,26 +128,69 @@ def main(args, chosen_models):
 
     :return: Nothing
     """
+    global metadata, weights_file
+    df_path = str(Path(__file__).parent / 'out' / 'datasets' / args.data)
+    df = pd.read_csv(df_path, parse_dates=['Timestamp'])
 
-    path = str(Path(__file__).parent / 'out' / 'datasets' / args.data)
-    df = pd.read_csv(path)
+    created_models = []
+    files = []
 
-    index = 0  # Maybe improve with metadata file!
+    for model_dir in args.model:
+        p = Path(__file__).parent / model_dir
+        for file in os.listdir(p):
+            if file.endswith('.cfg') & file.startswith('metadata'):
+                metadata = config_reader.read_metadata(p / file, loaded_models=model_classes)
+            else:
+                weights_file = p / file
 
-    for model in chosen_models:
-        model_class = model(df)
+        if metadata is not None:
+            model_ = find_model(metadata['model'])
 
-        trained_model = model_class.load_model(args['model'][index])
+            if model_ is None:
+                print(f"Couldn't find model: {metadata['model']}")
+                quit(101)
+                break
 
-        predictions = model_class.predict(trained_model, **vars(args))
+            model_class_ = model_(metadata['id'], metadata, df)
 
-        index += 1
+            compatability, missing_columns = check_compatability(df, metadata['columns'])
 
-        print(predictions)
+            if not compatability:
+                print(
+                    'One of the models is not compatible with the dataset and is missing: ' + str(missing_columns))
+                quit(102)
+                break
+
+            if weights_file is None:
+                print(f'Cannot find weights file: {metadata["id"]}')
+                quit(104)
+                break
+
+            created_models.append(model_class_)
+            files.append(weights_file)
+
+        else:
+            print(f"Metadata file is invalid. Directory: {model_dir}")
+            quit(103)
+            break
+
+    column_observed_name = metadata['targets'][0]
+    column_prediction_name = f'{metadata["id"]}-{metadata["targets"][0]}'
+    for index in range(0, len(created_models)):
+        file = files[index]
+        model = created_models[index]
+        trained_model = model.load_model(file, **vars(args))
+
+        predictions = model.predict(trained_model, **vars(args))
+        df[column_prediction_name] = predictions
+
+    plot_predictions(
+        observed=df[column_observed_name],
+        predicted=df[column_prediction_name]
+    )
 
 
 if __name__ == '__main__':
-
     models = []
 
     for i in range(1, len(sys.argv)):
@@ -177,15 +212,7 @@ if __name__ == '__main__':
             model_classes.append(Model)
             print(f"{Model.name} model has been loaded in")
 
-    loaded_models = []
-
-    for m in models:
-        for mc in model_classes:
-            if mc.name:
-                if not loaded_models.__contains__(mc):
-                    loaded_models.append(mc)
-
-    main(parse_args(loaded_models), loaded_models)
+    main(parse_args())
 
     # TODO:
     # -Let the user predict X amount of time-units into the future (see bullet point 5)
@@ -193,7 +220,7 @@ if __name__ == '__main__':
 
     # -Specify Timestep (Bryan)
     # -Specify which is the date column
-    # -Figure out why it only predicts 6 timesteps
+    # -Figure out why it only predicts 6 timesteps (this is because min- and max_prediction length in the dataset are both set to 6)
     # -Move specified column to convert
     # -Generate metadata file for algoritme
     # -Make index more time-based (this will increase accuracy by a lot)
