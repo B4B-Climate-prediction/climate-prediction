@@ -174,20 +174,21 @@ def main(args):
             quit(103)
             break
 
-    column_observed_name = metadata['targets'][0]
-    column_prediction_name = f'{metadata["id"]}-{metadata["targets"][0]}'
     for index in range(0, len(created_models)):
         file = files[index]
         model = created_models[index]
         trained_model = model.load_model(file, **vars(args))
 
+        column_observed_name = model.metadata['targets'][0]
+        column_prediction_name = f'{model.metadata["id"]}-{model.metadata["targets"][0]}'
+
         predictions = model.predict(trained_model, **vars(args))
         df[column_prediction_name] = predictions
 
-    plot_predictions(
-        observed=df[column_observed_name],
-        predicted=df[column_prediction_name]
-    )
+        plot_predictions(
+            observed=df[column_observed_name],
+            predicted=df[column_prediction_name]
+        )
 
 
 if __name__ == '__main__':
