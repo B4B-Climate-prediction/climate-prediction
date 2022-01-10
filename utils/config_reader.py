@@ -26,7 +26,7 @@ def read_configs(path, loaded_models) -> []:
 
         for model in loaded_models:
             if config['model'] == model.name:
-                config = dict(ChainMap(config, model.read_metadata(parser, hyper=config['hyper-tuning'])))
+                config = dict(ChainMap(config, model.read_metadata(parser, **{'hyper-tuning': config['hyper-tuning']})))
 
         configs.append(config)
 
