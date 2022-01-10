@@ -186,12 +186,12 @@ class Tft(Model, ABC):
             max_epochs=kwargs['epochs'],
             n_trials=kwargs['trials'],
             attention_head_size_range=(
-            self.metadata['min-attention-head-size'], self.metadata['max-attention-head-size']),
+                self.metadata['min-attention-head-size'], self.metadata['max-attention-head-size']),
             gradient_clip_val_range=(self.metadata['min-gradient-clip-val'], self.metadata['max-gradient-clip-val']),
             hidden_size_range=(self.metadata['min-hidden-size'], self.metadata['max-hidden-size']),
             dropout_range=(self.metadata['min-dropout'], self.metadata['max-dropout']),
             hidden_continuous_size_range=(
-            self.metadata['min-hidden-continuous-size'], self.metadata['max-hidden-continuous-size']),
+                self.metadata['min-hidden-continuous-size'], self.metadata['max-hidden-continuous-size']),
             learning_rate_range=(self.metadata['min-learning-rate'], self.metadata['max-learning-rate'])
         )
 
