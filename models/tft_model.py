@@ -5,6 +5,7 @@ import pickle
 import pandas as pd
 from abc import ABC
 from pathlib import Path
+from matplotlib.backends.backend_pdf import PdfPages
 
 from pytorch_forecasting import TemporalFusionTransformer, QuantileLoss, TimeSeriesDataSet
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
@@ -125,9 +126,7 @@ class Tft(Model, ABC):
             val_dataloaders=val_dataloader
         )
 
-        # torch.save(created_model.state_dict(), os.path.join(Path(__file__).parent.parent / 'out' / 'models' / 'tft', 'weights.ckpt'))
-
-        return trainer  # should return something that is obtainable by wandb!
+        return created_model
 
     def predict(self, model_, **kwargs):
         """
@@ -211,8 +210,25 @@ class Tft(Model, ABC):
 
         raw_predictions, x = evaluated_model.predict(validation_data_loader, mode="raw", return_x=True)
 
+        figures = []
         for i in range(len(x)):
-            evaluated_model.plot_prediction(x, raw_predictions, idx=i, add_loss_to_title=True)
+            fig = evaluated_model.plot_prediction(x, raw_predictions, idx=i, add_loss_to_title=True)
+
+            if isinstance(fig, list):
+                for f in fig:
+                    figures.append(f)
+            else:
+                figures.append(fig)
+
+        # Define export path for PDF report
+        filename = self.name + "-" + str(self.model_id) + ".pdf"
+        file_path = "reports" + "/" + filename
+
+        # Save figures into one single PDF file
+        pp = PdfPages(file_path)
+        for figure in figures:
+            figure.savefig(pp, format='pdf')
+        pp.close()
 
     def create_data_loaders(self, dataset):
         """
