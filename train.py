@@ -234,7 +234,7 @@ def main(args):
                 else:
                     metadata_export_path = (metadata_export_path / 'checkpoints')
 
-                config_reader.export_metadata(model_class, df, metadata_export_path)
+                # config_reader.export_metadata(model_class, df, metadata_export_path)
             else:
                 print(f"Couldn't find model: {config['model']}")
                 quit(102)
