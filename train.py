@@ -123,7 +123,6 @@ def main(args):
     :return: Nothing
     """
 
-    # TODO Fix WandB logger!
     global metadata, weights_file
 
     if main_config['wandb']:
@@ -197,7 +196,7 @@ def main(args):
 
             trained_model = model.train_model(training, trained_model)
 
-            model.evaluate_model(trained_model, training, **vars(args))
+            model.evaluate_model(trained_model, training)
 
     else:
         configs = config_reader.read_configs(Path(main_config['model-configs']).absolute(), loaded_models=model_classes)
@@ -234,7 +233,7 @@ def main(args):
 
                 config_reader.export_metadata(model_class, df, metadata_export_path)
 
-                model.evaluate_model(trained_model, training, **vars(args))
+                model_class.evaluate_model(trained_model, training)
             else:
                 print(f"Couldn't find model: {config['model']}")
                 quit(102)
