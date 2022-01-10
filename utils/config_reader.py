@@ -113,12 +113,13 @@ def read_metadata(file, loaded_models, **kwargs) -> {}:
         'unreels': eval(configparser.get('data', 'unknown-reels')),
         'kncats': eval(configparser.get('data', 'known-categoricals')),
         'knreels': eval(configparser.get('data', 'known-reels')),
-        'batch': int(configparser.get('training', 'batch-size')),
-        'learning-rate': int(configparser.get('training', 'learning-rate'))
+        'batch': eval(configparser.get('training', 'batch-size')),
+        'learning-rate': eval(configparser.get('training', 'learning-rate')),
+        'hyper-tuning': configparser.has_section('hyper-tuning')
     }
 
     for model in loaded_models:
-        config = dict(ChainMap(config, model.read_metadata(configparser, **kwargs)))
+        config = dict(ChainMap(config, model.read_metadata(configparser, **{'hyper-tuning': config['hyper-tuning']})))
 
     return config
 

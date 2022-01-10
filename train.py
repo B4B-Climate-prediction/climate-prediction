@@ -163,7 +163,7 @@ def main(args):
                     quit(101)
                     break
 
-                model_class = model(metadata['id'], metadata, df)
+                model_class = model(metadata, df)
 
                 compatability, missing_columns = check_compatability(df, metadata['columns'])
 

@@ -109,6 +109,8 @@ class Tft(Model, ABC):
         if (self.main_config['wandb']) and (self.main_config['wandb-project'] is not None):
             logger = WandbLogger(project=kwargs['wandb-project'])
 
+
+
         trainer = Trainer(
             max_epochs=kwargs['epochs'],
             gpus=self.metadata['gpus'],
@@ -308,12 +310,12 @@ def read_metadata(configparser, **kwargs):
                     'output-size': eval(configparser.get('training', 'output-size'))
                     }
 
-        if not kwargs['hyper']:
+        if not kwargs['hyper-tuning']:
             settings['hidden-size'] = eval(configparser.get('training', 'hidden-size'))
             settings['dropout'] = eval(configparser.get('training', 'dropout'))
             settings['attention-head-size'] = eval(configparser.get('training', 'attention-head-size'))
             settings['hidden-continuous-size'] = eval(configparser.get('training', 'hidden-continuous-size'))
-            settings['gradient-clip-val']: eval(configparser.get('training', 'gradient-clip-val'))
+            settings['gradient-clip-val'] = eval(configparser.get('training', 'gradient-clip-val'))
 
         else:
             settings['min-attention-head-size'] = eval(configparser.get('hyper-tuning', 'min-attention-head-size'))
