@@ -128,5 +128,9 @@ def read_main_config():
         'wandb-team': configparser.get(section='wandb', option='wandb-team'),
         'output-path-data': configparser.get(section='output', option='output-path-data'),
         'output-path-model': configparser.get(section='output', option='output-path-model'),
-        'model-configs': configparser.get(section='input', option='input-model-configs')
+        'model-configs': configparser.get(section='input', option='input-model-configs'),
+        'grafana-hostname': configparser.get(section='grafana', option='server-hostname'),
+        'grafana-port': eval(configparser.get(section='grafana', option='server-port')),
+        'grafana-username': configparser.get(section='grafana', option='server-username'),
+        'grafana-password': configparser.get(section='grafana', option='server-password')
     }

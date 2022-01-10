@@ -3,12 +3,6 @@ A prediction file that can use multiple models for predicting the forecasting
 
 command-arguments:
     -d [--DATA]: Filepath to data source
-    -t [--TARGETS]: columns of the data that need to be predicted
-    -g [--GROUPS]: groups in datasets
-    -kr [--KNREELS]: Known reels features in dataset (Also known in the future). Default: []
-    -kc [--KNCATS]: Known categorical features in dataset (also know in the future). Default: []
-    -ur [--UNREELS]: Unknown reel features in dataset. Default: []
-    -uc [--UNCATS]: Unknown categorical features in dataset. Default: []
     -m [--MODEL]: Model file paths, must be a file.
     -ts [--TIMESTEPS]: The amount of timesteps into the future you predict. Default: 10
     -tu [--TIMEUNIT]: Specify the timeunit difference between rows. Default: [10, min]
@@ -17,15 +11,22 @@ command-arguments:
 
 import importlib
 import inspect
+import json
 import os
 import sys
+from datetime import datetime
 
 import pandas as pd
 from pathlib import Path
 from argparse import ArgumentParser
+from utils import config_reader
 import matplotlib.pyplot as plt
 
-from utils import config_reader
+import paho.mqtt.client as mqtt
+
+clientSmartNetwork = mqtt.Client()
+
+main_config = config_reader.read_main_config()
 
 model_classes = []
 
@@ -114,12 +115,48 @@ def plot_predictions(observed, predicted):
     plt.show()
 
 
+def send_prediction_grafana(model, predictions):
+    clientSmartNetwork.username_pw_set(main_config['grafana-username'], password=main_config['grafana-password'])
+    clientSmartNetwork.connect(main_config['grafana-hostname'], main_config['grafana-port'], 240)
+
+    measurements = []
+
+    for target in model.metadata['targets']:
+        measurements.append({
+            "name": f"{target}",
+            "description": f"The prediction of {target} with model: {model.metadata['id']}",
+            "unit": "?"
+        })
+
+    clientSmartNetwork.publish("node/init", json.dumps(
+        {
+            "type": "simulation",
+            "id": f"prediction_{model.name.lower()}_{model.metadata['id']}",
+            "name": f"prediction-{model.name.lower()}-{model.metadata['id']}",
+            "measurements": measurements,
+            "actuators": [{}],
+        }))
+
+    for index in range(len(predictions)):
+
+        measurements = {
+            "timestamp": predictions['Timestamp'][index].isoformat()
+        }
+
+        for target in model.metadata['targets']:
+            measurements[target] = predictions[f'{metadata["id"]}-{target}'][index] * 1.0
+
+        clientSmartNetwork.publish("node/data", json.dumps({
+            "id": f"prediction_{model.name.lower()}_{model.metadata['id']}",
+            "measurements": [measurements]
+        }))
+
+
 def main(args):
     """
     The main method that runs whenever the file is being used.
 
     :param args: the arguments in the command.
-    :param chosen_models: the models have been specified in the command
 
     This method loops through the chosen models and executes
 
@@ -184,6 +221,8 @@ def main(args):
         predictions = model.predict(trained_model, **vars(args))
         df[column_prediction_name] = predictions
 
+        send_prediction_grafana(model, df)
+
     plot_predictions(
         observed=df[column_observed_name],
         predicted=df[column_prediction_name]
@@ -191,16 +230,6 @@ def main(args):
 
 
 if __name__ == '__main__':
-    models = []
-
-    for i in range(1, len(sys.argv)):
-        arg = sys.argv[i]
-
-        if arg.startswith('-') | arg.startswith('--'):
-            break
-
-        models.append(arg)
-
     # search models in folder
     package_dir = Path(__file__).parent / 'models'
 
