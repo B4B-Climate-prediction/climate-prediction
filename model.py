@@ -6,10 +6,10 @@ class Model:
     Base class for the models.
     """
 
-    def __init__(self, model_id, metadata, data):
+    def __init__(self, metadata, data):
         self.data = data
         self.metadata = metadata
-        self.model_id = model_id
+        self.model_id = metadata['id']
 
     def generate_time_series_dataset(self) -> Any:
         """

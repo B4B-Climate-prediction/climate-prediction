@@ -15,23 +15,25 @@ def read_configs(path, loaded_models) -> []:
             'model': parser.get('model', 'name'),
             'targets': eval(parser.get('data', 'targets')),
             'groups': eval(parser.get('data', 'groups')),
-            'unreels': eval(parser.get('data', 'unknown_reels')),
-            'uncats': eval(parser.get('data', 'unknown_categoricals')),
-            'knreels': eval(parser.get('data', 'known_reels')),
-            'kncats': eval(parser.get('data', 'known_categoricals')),
-            'batch': eval(parser.get('training', 'batch')),
-            'learning-rate': eval(parser.get('training', 'learning-rate'))
+            'unreels': eval(parser.get('data', 'unknown-reels')),
+            'uncats': eval(parser.get('data', 'unknown-categoricals')),
+            'knreels': eval(parser.get('data', 'known-reels')),
+            'kncats': eval(parser.get('data', 'known-categoricals')),
+            'batch': eval(parser.get('training', 'batch-size')),
+            'learning-rate': eval(parser.get('training', 'learning-rate')),
+            'hyper-tuning': parser.has_section('hyper-tuning')
         }
 
         for model in loaded_models:
-            config = dict(ChainMap(config, model.read_metadata(parser)))
+            if config['model'] == model.name:
+                config = dict(ChainMap(config, model.read_metadata(parser, hyper=config['hyper-tuning'])))
 
         configs.append(config)
 
     return configs
 
 
-def write_config(model):
+def write_config(model, **kwargs):
     main_config = read_main_config()
 
     configparser = ConfigParser()
@@ -47,10 +49,10 @@ def write_config(model):
     configparser.set(section='data', option='known-reels', value=str([]))
 
     configparser.add_section('training')
-    configparser.set(section='training', option='batch-size', value=str(0))
+    configparser.set(section='training', option='batch-size', value=str(128))
     configparser.set(section='training', option='learning-rate', value=str(0.01))
 
-    model.generate_config(configparser)
+    model.generate_config(configparser, **kwargs)
 
     with open(Path(main_config['model-configs']) / f'model_{model.name}.cfg', 'w') as configfile:
         configparser.write(configfile)
@@ -90,7 +92,7 @@ def export_metadata(model, df, pl):
         configparser.write(configfile)
 
 
-def read_metadata(file, loaded_models) -> {}:
+def read_metadata(file, loaded_models, **kwargs) -> {}:
     """
    Reads the metadata file that was generated when the model was trained
 
@@ -116,7 +118,7 @@ def read_metadata(file, loaded_models) -> {}:
     }
 
     for model in loaded_models:
-        config = dict(ChainMap(config, model.read_metadata(configparser)))
+        config = dict(ChainMap(config, model.read_metadata(configparser, **kwargs)))
 
     return config
 

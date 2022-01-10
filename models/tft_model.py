@@ -24,11 +24,11 @@ class Tft(Model, ABC):
 
     name = "Tft"
 
-    read_metadata = lambda configparser: read_metadata(configparser)
-    generate_config = lambda configparser: generate_config(configparser)
+    read_metadata = lambda configparser, **kwargs: read_metadata(configparser, **kwargs)
+    generate_config = lambda configparser, **kwargs: generate_config(configparser, **kwargs)
 
-    def __init__(self, model_id, metadata, data):
-        super().__init__(model_id, metadata, data)
+    def __init__(self, metadata, data):
+        super().__init__(metadata, data)
         self.max_prediction_length = 1
         self.max_encoder_length = 24
         self.main_config = config_reader.read_main_config()
@@ -195,16 +195,25 @@ class Tft(Model, ABC):
             dropout_range=(self.metadata['min-dropout'], self.metadata['max-dropout']),
             hidden_continuous_size_range=(
                 self.metadata['min-hidden-continuous-size'], self.metadata['max-hidden-continuous-size']),
-            learning_rate_range=(self.metadata['min-learning-rate'], self.metadata['max-learning-rate'])
+            learning_rate_range=(self.metadata['min-learning-rate'], self.metadata['max-learning-rate']),
+            log_dir=''
         )
 
         with open('optimization_summary.pkl', 'wb') as fout:
             pickle.dump(study, fout)
 
+        self.metadata['gradient-clip-val'] = study.best_params.get('gradient_clip_val')
+        self.metadata['hidden-size'] = study.best_params.get('hidden_size')
+        self.metadata['dropout'] = study.best_params.get('dropout')
+        self.metadata['hidden-continuous-size'] = study.best_params.get('hidden_continuous_size')
+        self.metadata['attention-head-size'] = study.best_params.get('attention_head_size')
+        self.metadata['learning-rate'] = study.best_params.get('learning_rate')
+
         best_model_path = 'hyp_tuning' + "/trial_" + str(study.best_trial.number)
         list_of_files = glob.glob(best_model_path)  # * means all if need specific format then *.csv
         latest_file = max(list_of_files, key=os.path.getctime)
-        dst_path = str(Path(__file__).parent.parent / 'out' / 'models' / 'tft' / str(self.metadata['id']) / 'checkpoints')
+        dst_path = str(
+            Path(__file__).parent.parent / 'out' / 'models' / 'tft' / str(self.metadata['id']) / 'checkpoints')
         shutil.move(latest_file, dst_path)
         shutil.rmtree('hyp_tuning')
 
@@ -271,29 +280,53 @@ class Tft(Model, ABC):
         configparser.set(section='training', option='output-size', value=str(self.metadata['output-size']))
         configparser.set(section='training', option='reduce-on-plateau-patience',
                          value=str(self.metadata['reduce-on-plateau-patience']))
-        configparser.set(section='training', option='gradient-clip-val', value=str(self.metadata['gradient']))
+        configparser.set(section='training', option='gradient-clip-val', value=str(self.metadata['gradient-clip-val']))
         configparser.set(section='training', option='gpus', value=str(self.metadata['gpus']))
         configparser.set(section='training', option='limit-train-batches',
                          value=str(self.metadata['limit-train-batches']))
 
 
-def read_metadata(configparser):
-    if configparser.has_option('training', 'min-encoder-length'):
-        return {
-            'min-encoder-length': eval(configparser.get('training', 'min-encoder-length')),
-            'max-encoder-length': eval(configparser.get('training', 'max-encoder-length')),
-            'min-prediction-length': eval(configparser.get('training', 'min-prediction-length')),
-            'max-prediction-length': eval(configparser.get('training', 'max-prediction-length')),
-            'hidden-size': eval(configparser.get('training', 'hidden-size')),
-            'dropout': eval(configparser.get('training', 'dropout')),
-            'attention-head-size': eval(configparser.get('training', 'attention-head-size')),
-            'hidden-continuous-size': eval(configparser.get('training', 'hidden-continuous-size')),
-            'output-size': eval(configparser.get('training', 'output-size')),
-            'reduce-on-plateau-patience': eval(configparser.get('training', 'reduce-on-plateau-patience')),
-            'gradient-clip-val': eval(configparser.get('training', 'gradient-clip-val')),
-            'gpus': eval(configparser.get('training', 'gpus')),
-            'limit-train-batches': eval(configparser.get('training', 'limit-train-batches'))
-        }
+def read_metadata(configparser, **kwargs):
+    if configparser.get('model', 'name') == 'Tft':
+        settings = {'min-encoder-length': eval(configparser.get('training', 'min-encoder-length')),
+                    'max-encoder-length': eval(configparser.get('training', 'max-encoder-length')),
+                    'min-prediction-length': eval(configparser.get('training', 'min-prediction-length')),
+                    'max-prediction-length': eval(configparser.get('training', 'max-prediction-length')),
+                    'reduce-on-plateau-patience': eval(configparser.get('training', 'reduce-on-plateau-patience')),
+                    'gpus': eval(configparser.get('training', 'gpus')),
+                    'limit-train-batches': eval(configparser.get('training', 'limit-train-batches')),
+                    'output-size': eval(configparser.get('training', 'output-size'))
+                    }
+
+        if not kwargs['hyper']:
+            settings['hidden-size'] = eval(configparser.get('training', 'hidden-size'))
+            settings['dropout'] = eval(configparser.get('training', 'dropout'))
+            settings['attention-head-size'] = eval(configparser.get('training', 'attention-head-size'))
+            settings['hidden-continuous-size'] = eval(configparser.get('training', 'hidden-continuous-size'))
+            settings['gradient-clip-val']: eval(configparser.get('training', 'gradient-clip-val'))
+
+        else:
+            settings['min-attention-head-size'] = eval(configparser.get('hyper-tuning', 'min-attention-head-size'))
+            settings['max-attention-head-size'] = eval(configparser.get('hyper-tuning', 'max-attention-head-size'))
+
+            settings['min-gradient-clip-val'] = eval(configparser.get('hyper-tuning', 'min-gradient-clip-val'))
+            settings['max-gradient-clip-val'] = eval(configparser.get('hyper-tuning', 'max-gradient-clip-val'))
+
+            settings['min-hidden-size'] = eval(configparser.get('hyper-tuning', 'min-hidden-size'))
+            settings['max-hidden-size'] = eval(configparser.get('hyper-tuning', 'max-hidden-size'))
+
+            settings['min-dropout'] = eval(configparser.get('hyper-tuning', 'min-dropout'))
+            settings['max-dropout'] = eval(configparser.get('hyper-tuning', 'max-dropout'))
+
+            settings['min-hidden-continuous-size'] = eval(
+                configparser.get('hyper-tuning', 'min-hidden-continuous-size'))
+            settings['max-hidden-continuous-size'] = eval(
+                configparser.get('hyper-tuning', 'max-hidden-continuous-size'))
+
+            settings['min-learning-rate'] = eval(configparser.get('hyper-tuning', 'min-learning-rate'))
+            settings['max-learning-rate'] = eval(configparser.get('hyper-tuning', 'max-learning-rate'))
+
+        return settings
 
 
 def generate_config(configparser, **kwargs):
@@ -301,20 +334,20 @@ def generate_config(configparser, **kwargs):
     configparser.set(section='training', option='max-encoder-length', value='27')
     configparser.set(section='training', option='min-prediction-length', value='1')
     configparser.set(section='training', option='max-prediction-length', value='1')
+    configparser.set(section='training', option='output-size', value='7')
+    configparser.set(section='training', option='reduce-on-plateau-patience', value='4')
+    configparser.set(section='training', option='gpus', value='0')
+    configparser.set(section='training', option='limit-train-batches', value='50')
 
     if not kwargs['hyper']:
         configparser.set(section='training', option='hidden-size', value='16')
         configparser.set(section='training', option='dropout', value='0.1')
         configparser.set(section='training', option='attention-head-size', value='1')
         configparser.set(section='training', option='hidden-continuous-size', value='8')
-        configparser.set(section='training', option='output-size', value='7')
-        configparser.set(section='training', option='reduce-on-plateau-patience', value='4')
         configparser.set(section='training', option='gradient-clip-val', value='0.15')
-        configparser.set(section='training', option='gpus', value='0')
-        configparser.set(section='training', option='limit-train-batches', value='50')
 
     else:
-        configparser.addsection('hyper-tuning')
+        configparser.add_section('hyper-tuning')
         configparser.set(section='hyper-tuning', option='min-attention-head-size', value='1')
         configparser.set(section='hyper-tuning', option='max-attention-head-size', value='4')
 

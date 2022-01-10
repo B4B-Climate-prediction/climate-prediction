@@ -16,6 +16,12 @@ def parse_args():
     """
     parser = ArgumentParser(add_help=True)
 
+    parser.add_argument(
+        '-hy', '--hyper',
+        action='store_true',
+        help='specifies if this model is meant to be hypertuned'
+    )
+
     for model in model_classes:
         parser.add_argument(model.name)
 
@@ -25,7 +31,7 @@ def parse_args():
 def main(args):
     for model in model_classes:
         if vars(args)[model.name] is not None:
-            config_reader.write_config(model)
+            config_reader.write_config(model, **vars(args))
 
 
 if __name__ == '__main__':

@@ -60,12 +60,6 @@ def parse_args():
              'will maximally run before coming to the best results. Default: 100 '
     )
 
-    parser.add_argument(
-        '-hy', '--hyper',
-        action='store_true',
-        help='Hypertunes the model if specified, this will take a long time'
-    )
-
     return parser.parse_args()
 
 
@@ -201,7 +195,7 @@ def main(args):
 
             trained_model = model.train_model(training, trained_model, **vars(args))
 
-            # model.evaluate_model(trained_model, training, **vars(args))
+            model.evaluate_model(trained_model, training, **vars(args))
 
     else:
         configs = config_reader.read_configs(Path(main_config['model-configs']).absolute(), loaded_models=model_classes)
@@ -214,11 +208,11 @@ def main(args):
 
                 config['id'] = model_id
 
-                model_class = model(model_id, config, df)
+                model_class = model(config, df)
 
                 training = model_class.generate_time_series_dataset()
 
-                if args.hyper:
+                if config['hyper-tuning']:
                     trained_model = model_class.tune_hyper_parameter(training, **vars(args))
                 else:
                     c_model = model_class.generate_model(training)
@@ -234,7 +228,9 @@ def main(args):
                 else:
                     metadata_export_path = (metadata_export_path / 'checkpoints')
 
-                # config_reader.export_metadata(model_class, df, metadata_export_path)
+                config_reader.export_metadata(model_class, df, metadata_export_path)
+
+                model.evaluate_model(trained_model, training)
             else:
                 print(f"Couldn't find model: {config['model']}")
                 quit(102)
