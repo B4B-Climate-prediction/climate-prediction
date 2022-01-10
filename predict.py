@@ -152,7 +152,7 @@ def main(args):
                 quit(101)
                 break
 
-            model_class_ = model_(metadata['id'], metadata, df)
+            model_class_ = model_(metadata, df)
 
             compatability, missing_columns = check_compatability(df, metadata['columns'])
 
@@ -175,20 +175,21 @@ def main(args):
             quit(103)
             break
 
-    column_observed_name = metadata['targets'][0]
-    column_prediction_name = f'{metadata["id"]}-{metadata["targets"][0]}'
     for index in range(0, len(created_models)):
         file = files[index]
         model = created_models[index]
         trained_model = model.load_model(file, **vars(args))
 
         predictions = model.predict(trained_model, **vars(args))
-        df[column_prediction_name] = predictions
 
-    plot_predictions(
-        observed=df[column_observed_name],
-        predicted=df[column_prediction_name]
-    )
+        for target in model.metadata['targets']:
+            column_prediction_name = f'{model.metadata["id"]}-{target}'
+            df[column_prediction_name] = predictions[target]
+
+            plot_predictions(
+                observed=df[target],
+                predicted=df[column_prediction_name]
+            )
 
 
 if __name__ == '__main__':

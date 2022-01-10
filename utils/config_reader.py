@@ -129,7 +129,7 @@ def read_main_config():
     configparser.read(Path(__file__).parent.parent.absolute() / 'config.cfg')
 
     return {
-        'wandb': configparser.get(section='wandb', option='wandb') == 'true',
+        'wandb': str(configparser.get(section='wandb', option='wandb')).lower() == 'true',
         'wandb-key': configparser.get(section='wandb', option='wandb-key'),
         'wandb-project': configparser.get(section='wandb', option='wandb-project'),
         'wandb-team': configparser.get(section='wandb', option='wandb-team'),
