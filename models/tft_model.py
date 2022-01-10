@@ -201,10 +201,8 @@ class Tft(Model, ABC):
         with open('optimization_summary.pkl', 'wb') as fout:
             pickle.dump(study, fout)
 
-        # Use PATHLIB! Todo: FIX!
-
-        best_Model_path = 'hyp_tuning' + "/trial_" + str(study.best_trial.number)
-        list_of_files = glob.glob(best_Model_path)  # * means all if need specific format then *.csv
+        best_model_path = 'hyp_tuning' + "/trial_" + str(study.best_trial.number)
+        list_of_files = glob.glob(best_model_path)  # * means all if need specific format then *.csv
         latest_file = max(list_of_files, key=os.path.getctime)
         dst_path = str(Path(__file__).parent.parent / 'out' / 'models' / 'tft' / str(self.metadata['id']) / 'checkpoints')
         shutil.move(latest_file, dst_path)
