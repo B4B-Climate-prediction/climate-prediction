@@ -20,6 +20,7 @@ def read_configs(path, loaded_models) -> []:
             'knreels': eval(parser.get('data', 'known_reels')),
             'kncats': eval(parser.get('data', 'known_categoricals')),
             'batch': eval(parser.get('training', 'batch')),
+            'learning-rate': eval(parser.get('training', 'learning-rate'))
         }
 
         for model in loaded_models:
@@ -47,6 +48,7 @@ def write_config(model):
 
     configparser.add_section('training')
     configparser.set(section='training', option='batch-size', value=str(0))
+    configparser.set(section='training', option='learning-rate', value=str(0.01))
 
     model.generate_config(configparser)
 
@@ -80,6 +82,7 @@ def export_metadata(model, df, pl):
 
     configparser.add_section('training')
     configparser.set(section='training', option='batch-size', value=str(model.metadata['batch']))
+    configparser.set(section='training', option='learning-rate', value=str(model.metadata['learning-rate']))
 
     model.write_metadata(configparser)
 
@@ -108,7 +111,8 @@ def read_metadata(file, loaded_models) -> {}:
         'unreels': eval(configparser.get('data', 'unknown-reels')),
         'kncats': eval(configparser.get('data', 'known-categoricals')),
         'knreels': eval(configparser.get('data', 'known-reels')),
-        'batch': int(configparser.get('training', 'batch-size'))
+        'batch': int(configparser.get('training', 'batch-size')),
+        'learning-rate': int(configparser.get('training', 'learning-rate'))
     }
 
     for model in loaded_models:

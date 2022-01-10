@@ -54,10 +54,10 @@ class Tft(Model, ABC):
             target=target,
             time_idx='Index',
             group_ids=self.metadata['groups'],
-            min_encoder_length=0,
-            max_encoder_length=self.max_encoder_length,
-            min_prediction_length=1,
-            max_prediction_length=self.max_prediction_length,
+            min_encoder_length=self.metadata['min-encoder-length'],
+            max_encoder_length=self.metadata['max-encoder-length'],
+            min_prediction_length=self.metadata['min-prediction-length'],
+            max_prediction_length=self.metadata['max-prediction-length'],
             time_varying_known_categoricals=self.metadata['kncats'],
             time_varying_known_reals=self.metadata['knreels'],
             time_varying_unknown_categoricals=self.metadata['uncats'],
@@ -78,20 +78,20 @@ class Tft(Model, ABC):
         targets = self.metadata['targets']
 
         if len(targets) > 1:
-            output = [7 for _ in targets]
+            output = [self.metadata['output-size'] for _ in targets]
         else:
-            output = 7
+            output = self.metadata['output-size']
 
         return TemporalFusionTransformer.from_dataset(
             dataset,
-            learning_rate=0.01,
-            hidden_size=16,
-            attention_head_size=1,
-            dropout=0.1,  # Check deze shit ook uit
-            hidden_continuous_size=8,
+            learning_rate=self.metadata['learning-rate'],
+            hidden_size=self.metadata['hidden-size'],
+            attention_head_size=self.metadata['attention-head-size'],
+            dropout=self.metadata['dropout'],  # Check deze shit ook uit
+            hidden_continuous_size=self.metadata['hidden-continuous-size'],
             output_size=output,
             loss=QuantileLoss(),
-            reduce_on_plateau_patience=4
+            reduce_on_plateau_patience=self.metadata['reduce-on-plateau-patience']
         )
 
     def train_model(self, dataset, created_model, **kwargs):
@@ -110,13 +110,13 @@ class Tft(Model, ABC):
 
         trainer = Trainer(
             max_epochs=kwargs['epochs'],
-            gpus=0,
-            gradient_clip_val=0.15,
-            limit_train_batches=50,
+            gpus=self.metadata['gpus'],
+            gradient_clip_val=self.metadata['gradient-clip-val'],
+            limit_train_batches=self.metadata['limit-train-batches'],
             callbacks=[early_stop_callback],
             weights_save_path=str(Path(__file__).parent.parent / 'out' / 'models' / 'tft' / f'{self.model_id}'),
             default_root_dir='',
-            logger=logger
+            logger=logger,
         )
 
         trainer.fit(
@@ -184,7 +184,15 @@ class Tft(Model, ABC):
             val_dataloader=val_dataloader,
             model_path=Path(__file__) / kwargs['model'],
             max_epochs=kwargs['epochs'],
-            n_trials=kwargs['trials']
+            n_trials=kwargs['trials'],
+            attention_head_size_range=(
+            self.metadata['min-attention-head-size'], self.metadata['max-attention-head-size']),
+            gradient_clip_val_range=(self.metadata['min-gradient-clip-val'], self.metadata['max-gradient-clip-val']),
+            hidden_size_range=(self.metadata['min-hidden-size'], self.metadata['max-hidden-size']),
+            dropout_range=(self.metadata['min-dropout'], self.metadata['max-dropout']),
+            hidden_continuous_size_range=(
+            self.metadata['min-hidden-continuous-size'], self.metadata['max-hidden-continuous-size']),
+            learning_rate_range=(self.metadata['min-learning-rate'], self.metadata['max-learning-rate'])
         )
 
         with open('optimization_summary.pkl', 'wb') as fout:
@@ -227,7 +235,8 @@ class Tft(Model, ABC):
         validation = TimeSeriesDataSet.from_dataset(dataset, self.data, predict=True, stop_randomization=True)
 
         return dataset.to_dataloader(train=True, batch_size=self.metadata['batch'], num_workers=2,
-                                     shuffle=False), validation.to_dataloader(train=False, batch_size=self.metadata['batch'],
+                                     shuffle=False), validation.to_dataloader(train=False,
+                                                                              batch_size=self.metadata['batch'],
                                                                               num_workers=2, shuffle=False)
 
     def load_model(self, path, **kwargs):
@@ -239,15 +248,81 @@ class Tft(Model, ABC):
         return TemporalFusionTransformer.load_from_checkpoint(path)
 
     def write_metadata(self, configparser):
-        configparser.set(section='training', option='encoder-length', value=str(self.metadata['encoder-length']))
+        configparser.set(section='training', option='min-encoder-length',
+                         value=str(self.metadata['min-encoder-length']))
+        configparser.set(section='training', option='max-encoder-length',
+                         value=str(self.metadata['max-encoder-length']))
+        configparser.set(section='training', option='min-prediction-length',
+                         value=str(self.metadata['min-prediction-length']))
+        configparser.set(section='training', option='max-prediction-length',
+                         value=str(self.metadata['max-prediction-length']))
+        configparser.set(section='training', option='hidden-size', value=str(self.metadata['hidden-size']))
+        configparser.set(section='training', option='dropout', value=str(self.metadata['dropout']))
+        configparser.set(section='training', option='attention-head-size',
+                         value=str(self.metadata['attention-head-size']))
+        configparser.set(section='training', option='hidden-continuous-size',
+                         value=str(self.metadata['hidden-continuous-size']))
+        configparser.set(section='training', option='output-size', value=str(self.metadata['output-size']))
+        configparser.set(section='training', option='reduce-on-plateau-patience',
+                         value=str(self.metadata['reduce-on-plateau-patience']))
+        configparser.set(section='training', option='gradient-clip-val', value=str(self.metadata['gradient']))
+        configparser.set(section='training', option='gpus', value=str(self.metadata['gpus']))
+        configparser.set(section='training', option='limit-train-batches',
+                         value=str(self.metadata['limit-train-batches']))
 
 
 def read_metadata(configparser):
-    if configparser.has_option('training', 'encoder-length'):
+    if configparser.has_option('training', 'min-encoder-length'):
         return {
-            'encoder-length': eval(configparser.get('training', 'encoder-length'))
+            'min-encoder-length': eval(configparser.get('training', 'min-encoder-length')),
+            'max-encoder-length': eval(configparser.get('training', 'max-encoder-length')),
+            'min-prediction-length': eval(configparser.get('training', 'min-prediction-length')),
+            'max-prediction-length': eval(configparser.get('training', 'max-prediction-length')),
+            'hidden-size': eval(configparser.get('training', 'hidden-size')),
+            'dropout': eval(configparser.get('training', 'dropout')),
+            'attention-head-size': eval(configparser.get('training', 'attention-head-size')),
+            'hidden-continuous-size': eval(configparser.get('training', 'hidden-continuous-size')),
+            'output-size': eval(configparser.get('training', 'output-size')),
+            'reduce-on-plateau-patience': eval(configparser.get('training', 'reduce-on-plateau-patience')),
+            'gradient-clip-val': eval(configparser.get('training', 'gradient-clip-val')),
+            'gpus': eval(configparser.get('training', 'gpus')),
+            'limit-train-batches': eval(configparser.get('training', 'limit-train-batches'))
         }
 
 
-def generate_config(configparser):
-    configparser.set(section='training', option='encoder-length', value='0')
+def generate_config(configparser, **kwargs):
+    configparser.set(section='training', option='min-encoder-length', value='0')
+    configparser.set(section='training', option='max-encoder-length', value='27')
+    configparser.set(section='training', option='min-prediction-length', value='1')
+    configparser.set(section='training', option='max-prediction-length', value='1')
+
+    if not kwargs['hyper']:
+        configparser.set(section='training', option='hidden-size', value='16')
+        configparser.set(section='training', option='dropout', value='0.1')
+        configparser.set(section='training', option='attention-head-size', value='1')
+        configparser.set(section='training', option='hidden-continuous-size', value='8')
+        configparser.set(section='training', option='output-size', value='7')
+        configparser.set(section='training', option='reduce-on-plateau-patience', value='4')
+        configparser.set(section='training', option='gradient-clip-val', value='0.15')
+        configparser.set(section='training', option='gpus', value='0')
+        configparser.set(section='training', option='limit-train-batches', value='50')
+
+    else:
+        configparser.addsection('hyper-tuning')
+        configparser.set(section='hyper-tuning', option='min-attention-head-size', value='1')
+        configparser.set(section='hyper-tuning', option='max-attention-head-size', value='4')
+
+        configparser.set(section='hyper-tuning', option='min-gradient-clip-val', value='0.01')
+        configparser.set(section='hyper-tuning', option='max-gradient-clip-val', value='100')
+
+        configparser.set(section='hyper-tuning', option='min-hidden-size', value='16')
+        configparser.set(section='hyper-tuning', option='max-hidden-size', value='265')
+
+        configparser.set(section='hyper-tuning', option='min-dropout', value='0.1')
+        configparser.set(section='hyper-tuning', option='max-dropout', value='0.3')
+
+        configparser.set(section='hyper-tuning', option='min-hidden-continuous-size', value='8')
+        configparser.set(section='hyper-tuning', option='max-hidden-continuous-size', value='64')
+
+        configparser.set(section='hyper-tuning', option='min-learning-rate', value='1e-5')
+        configparser.set(section='hyper-tuning', option='max-learning-rate', value='1.0')
