@@ -219,7 +219,7 @@ def main(args):
                 training = model_class.generate_time_series_dataset()
 
                 if args.hyper:
-                    trained_model = model_class.tune_hyper_parameter(df, **vars(args))
+                    trained_model = model_class.tune_hyper_parameter(training, **vars(args))
                 else:
                     c_model = model_class.generate_model(training)
 
@@ -234,7 +234,7 @@ def main(args):
                 else:
                     metadata_export_path = (metadata_export_path / 'checkpoints')
 
-                config_reader.export_metadata(model_class, df, metadata_export_path)
+                # config_reader.export_metadata(model_class, df, metadata_export_path)
             else:
                 print(f"Couldn't find model: {config['model']}")
                 quit(102)

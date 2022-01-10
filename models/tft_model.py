@@ -2,6 +2,8 @@
 
 import os
 import pickle
+import shutil
+
 import pandas as pd
 from abc import ABC
 from pathlib import Path
@@ -11,6 +13,7 @@ from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimi
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.loggers import WandbLogger
+import glob
 
 from model import Model
 from utils import config_reader
@@ -182,7 +185,7 @@ class Tft(Model, ABC):
         study = optimize_hyperparameters(
             train_dataloader=train_dataloader,
             val_dataloader=val_dataloader,
-            model_path=Path(__file__) / kwargs['model'],
+            model_path='hyp_tuning',
             max_epochs=kwargs['epochs'],
             n_trials=kwargs['trials'],
             attention_head_size_range=(
@@ -199,12 +202,18 @@ class Tft(Model, ABC):
             pickle.dump(study, fout)
 
         # Use PATHLIB! Todo: FIX!
-        path = kwargs['model'] + "/trial_" + str(study.best_trial.number)
 
-        files = os.listdir(path)
+        best_Model_path = 'hyp_tuning' + "/trial_" + str(study.best_trial.number)
+        list_of_files = glob.glob(best_Model_path)  # * means all if need specific format then *.csv
+        latest_file = max(list_of_files, key=os.path.getctime)
+        dst_path = str(Path(__file__).parent.parent / 'out' / 'models' / 'tft' / str(self.metadata['id']) / 'checkpoints')
+        shutil.move(latest_file, dst_path)
+        shutil.rmtree('hyp_tuning')
+
+        weights_file = os.listdir(dst_path)[0]
 
         # SHOULD RETURN THE BEST TRIAL! IF THIS FUNCTION IS AVAILABLE!
-        return TemporalFusionTransformer.load_from_checkpoint(path + "/" + files[len(files) - 1])
+        return TemporalFusionTransformer.load_from_checkpoint(f"{dst_path}/{weights_file}")
 
     def evaluate_model(self, evaluated_model, dataset):
         """
@@ -231,7 +240,6 @@ class Tft(Model, ABC):
 
         :return: DataLoaders
         """
-
         validation = TimeSeriesDataSet.from_dataset(dataset, self.data, predict=True, stop_randomization=True)
 
         return dataset.to_dataloader(train=True, batch_size=self.metadata['batch'], num_workers=2,
