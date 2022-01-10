@@ -135,13 +135,17 @@ class Tft(Model, ABC):
 
         :param model_: trained model
 
-        :return: predicted targets
+        :return: dictionary of predicted targets
         """
 
-        predictions = [None for _ in range(self.max_encoder_length)]
+        targets = self.metadata['targets']
 
         unit = kwargs["timeunit"][1]  # E.g. 'minutes'
         value = int(kwargs['timeunit'][0])  # E.g. 10
+
+        result = {}
+        for target in targets:
+            result[target] = [None for _ in range(self.max_encoder_length)]
 
         for j_lower in range(len(self.data)):
             j_upper = j_lower + self.max_encoder_length
@@ -156,7 +160,7 @@ class Tft(Model, ABC):
             decoder_data = pd.concat(
                 [last_data.assign(Timestamp=lambda y: y.Timestamp + pd.DateOffset(**{unit: value * i})) for i in
                  range(1, self.max_prediction_length + 1)],
-                ignore_index=True,
+                ignore_index=True
             )
 
             # add time index consistent with "data"
@@ -165,9 +169,13 @@ class Tft(Model, ABC):
             # combine encoder and decoder data
             new_prediction_data = pd.concat([encoder_data, decoder_data], ignore_index=True)
 
-            predictions.append((model_.predict(new_prediction_data)[0][0]).item())
+            raw_predictions = model_.predict(new_prediction_data)
 
-        return predictions
+            for i, target in enumerate(targets):
+                prediction = raw_predictions[i][0].item()
+                result[target].append(prediction)
+
+        return result
 
     def tune_hyper_parameter(self, dataset, **kwargs):  # Add clean up after the creation of the best trial!
         """

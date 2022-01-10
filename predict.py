@@ -189,14 +189,14 @@ def main(args):
 
         predictions = model.predict(trained_model, **vars(args))
 
-        column_observed_name = model.metadata['targets'][0]
-        column_prediction_name = f'{model.metadata["id"]}-{column_observed_name}'
-        df[column_prediction_name] = predictions
+        for target in model.metadata['targets']:
+            column_prediction_name = f'{model.metadata["id"]}-{target}'
+            df[column_prediction_name] = predictions[target]
 
-        plot_predictions(
-            observed=df[column_observed_name],
-            predicted=df[column_prediction_name]
-        )
+            plot_predictions(
+                observed=df[target],
+                predicted=df[column_prediction_name]
+            )
 
 
 if __name__ == '__main__':
