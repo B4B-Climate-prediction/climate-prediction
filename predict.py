@@ -3,13 +3,7 @@ A prediction file that can use multiple models for predicting the forecasting
 
 command-arguments:
     -d [--DATA]: Filepath to data source
-    -t [--TARGETS]: columns of the data that need to be predicted
-    -g [--GROUPS]: groups in datasets
-    -kr [--KNREELS]: Known reels features in dataset (Also known in the future). Default: []
-    -kc [--KNCATS]: Known categorical features in dataset (also know in the future). Default: []
-    -ur [--UNREELS]: Unknown reel features in dataset. Default: []
-    -uc [--UNCATS]: Unknown categorical features in dataset. Default: []
-    -m [--MODEL]: Model file paths, must be a file.
+    -m [--MODELS]: Model file paths, must be a file.
     -ts [--TIMESTEPS]: The amount of timesteps into the future you predict. Default: 10
     -tu [--TIMEUNIT]: Specify the timeunit difference between rows. Default: [10, min]
 
@@ -108,6 +102,14 @@ def find_model(name):
 
 
 def plot_predictions(observed, predicted):
+    """
+    Plots the prediction
+
+    :param observed: the observed data-points in the dataset
+    :param predicted: the generated data-points from the model
+
+    :returns: nothing
+    """
     plt.plot(observed, label="Observed")
     plt.plot(predicted, label="Predicted")
     plt.legend()
@@ -119,9 +121,8 @@ def main(args):
     The main method that runs whenever the file is being used.
 
     :param args: the arguments in the command.
-    :param chosen_models: the models have been specified in the command
 
-    This method loops through the chosen models and executes
+    This method loops through the models and executes
 
     Model.load_model
     Model.predict
@@ -213,15 +214,3 @@ if __name__ == '__main__':
             print(f"{Model.name} model has been loaded in")
 
     main(parse_args())
-
-    # TODO:
-    # -Let the user predict X amount of time-units into the future (see bullet point 5)
-    # -Discuss what kind of output / prediction we want
-
-    # -Specify Timestep (Bryan)
-    # -Specify which is the date column
-    # -Figure out why it only predicts 6 timesteps (this is because min- and max_prediction length in the dataset are both set to 6)
-    # -Move specified column to convert
-    # -Generate metadata file for algoritme
-    # -Make index more time-based (this will increase accuracy by a lot)
-    # -Look into WANDB

@@ -4,6 +4,8 @@ A training file that can take multiple models, train them and evaluate them.
 Command-arguments:
     -d [--DATA]: Data file path, must be a .csv file.
     -m [--MODEL]: Model file paths, must be a file. If specified it will continue training that model.
+    -e [--EPOCHS]: The amount of epochs the model needs to be trained
+    -tr [--TRIALS]: The amount of trials the hyper-tuning must execute
 """
 
 import importlib

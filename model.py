@@ -70,7 +70,11 @@ class Model:
 
     def write_metadata(self, configparser):
         """
+        Writes the metadata from a model (This is per model very different based on what data it needs)
 
+        :param configparser: ConfigParser
+
+        :return: Nothing
         """
         raise NotImplementedError()
 

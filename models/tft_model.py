@@ -29,8 +29,6 @@ class Tft(Model, ABC):
 
     def __init__(self, metadata, data):
         super().__init__(metadata, data)
-        self.max_prediction_length = 1
-        self.max_encoder_length = 24
         self.main_config = config_reader.read_main_config()
 
     def generate_time_series_dataset(self):
@@ -158,7 +156,7 @@ class Tft(Model, ABC):
 
             decoder_data = pd.concat(
                 [last_data.assign(Timestamp=lambda y: y.Timestamp + pd.DateOffset(**{unit: value * i})) for i in
-                 range(1, self.max_prediction_length + 1)],
+                 range(1, self.metadata['max-prediction-length'] + 1)],
                 ignore_index=True,
             )
 
@@ -198,9 +196,6 @@ class Tft(Model, ABC):
             learning_rate_range=(self.metadata['min-learning-rate'], self.metadata['max-learning-rate']),
             log_dir=''
         )
-
-        with open('optimization_summary.pkl', 'wb') as fout:
-            pickle.dump(study, fout)
 
         self.metadata['gradient-clip-val'] = study.best_params.get('gradient_clip_val')
         self.metadata['hidden-size'] = study.best_params.get('hidden_size')
@@ -263,6 +258,13 @@ class Tft(Model, ABC):
         return TemporalFusionTransformer.load_from_checkpoint(path)
 
     def write_metadata(self, configparser):
+        """
+        Writes the metadata from self.metadata into the configparser
+
+        :param configparser: The configparser that writes to the config file for the model
+
+        :return: nothing
+        """
         configparser.set(section='training', option='min-encoder-length',
                          value=str(self.metadata['min-encoder-length']))
         configparser.set(section='training', option='max-encoder-length',
@@ -287,6 +289,14 @@ class Tft(Model, ABC):
 
 
 def read_metadata(configparser, **kwargs):
+    """
+    Reads the metadata from a specific config file
+
+    :param configparser: The configparser that reads the file
+    :param kwargs: Contains one argument if the model is being hyper-tuned
+
+    :return: dictonary of settings
+    """
     if configparser.get('model', 'name') == 'Tft':
         settings = {'min-encoder-length': eval(configparser.get('training', 'min-encoder-length')),
                     'max-encoder-length': eval(configparser.get('training', 'max-encoder-length')),
@@ -330,6 +340,14 @@ def read_metadata(configparser, **kwargs):
 
 
 def generate_config(configparser, **kwargs):
+    """
+    Generates a example model-config for the generate_model.py
+
+    :param configparser: The configparser that writes to the file
+    :param kwargs: Contains if the model is being hyper-tuned
+
+    :return: dictionary of settings
+    """
     configparser.set(section='training', option='min-encoder-length', value='0')
     configparser.set(section='training', option='max-encoder-length', value='27')
     configparser.set(section='training', option='min-prediction-length', value='1')

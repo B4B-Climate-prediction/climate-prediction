@@ -9,7 +9,8 @@ class ExampleModel(ABC, Model):
 
     name = 'Name of the model that will be used in the command'
 
-    add_arguments = lambda parser: [additional arguments]
+    read_metadata = lambda configparser, **kwargs: read_metadata(configparser, **kwargs)
+    generate_config = lambda configparser, **kwargs: generate_config(configparser, **kwargs)
 
     def __init__(self, model_id, data):
         super().__init__(model_id, data)
@@ -34,6 +35,15 @@ class ExampleModel(ABC, Model):
 
     def evaluate_model(self, model, dataset, **kwargs):
         #your code
+
+    def write_metadata(configparser)
+        #your code
+
+def read_metadata(configparser, **kwargs):
+    #your code
+
+def generate_config(configparser, **kwargs):
+    #your code
 
 """
 

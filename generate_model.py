@@ -1,3 +1,11 @@
+"""
+A script that generates config files for the models
+
+Command-arguments:
+    [MODEL_NAMES]
+    -hy [--HYPER]: If it needs to be hyper-tuned
+"""
+
 import importlib
 import inspect
 from argparse import ArgumentParser
