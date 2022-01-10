@@ -109,7 +109,7 @@ class Tft(Model, ABC):
 
         logger = False
         if (self.main_config['wandb']) and (self.main_config['wandb-project'] is not None):
-            logger = WandbLogger(project=kwargs['wandb-project'])
+            logger = WandbLogger(project=self.main_config['wandb-project'])
 
 
 
