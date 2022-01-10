@@ -8,6 +8,7 @@ import pandas as pd
 from abc import ABC
 from pathlib import Path
 from matplotlib.backends.backend_pdf import PdfPages
+import matplotlib.pyplot as plt
 
 from pytorch_forecasting import TemporalFusionTransformer, QuantileLoss, TimeSeriesDataSet
 from pytorch_forecasting.models.temporal_fusion_transformer.tuning import optimize_hyperparameters
@@ -234,6 +235,7 @@ class Tft(Model, ABC):
         figures = []
         for i in range(len(x)):
             fig = evaluated_model.plot_prediction(x, raw_predictions, idx=i, add_loss_to_title=True)
+            plt.close()
 
             if isinstance(fig, list):
                 for f in fig:
