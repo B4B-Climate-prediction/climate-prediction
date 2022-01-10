@@ -230,7 +230,7 @@ def main(args):
 
                 config_reader.export_metadata(model_class, df, metadata_export_path)
 
-                model.evaluate_model(trained_model, training)
+                model.evaluate_model(trained_model, training, **vars(args))
             else:
                 print(f"Couldn't find model: {config['model']}")
                 quit(102)
