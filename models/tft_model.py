@@ -139,13 +139,13 @@ class Tft(Model, ABC):
         :return: predicted targets
         """
 
-        predictions = [None for _ in range(self.max_encoder_length)]
+        predictions = [None for _ in range(self.metadata['max-encoder-length'])]
 
         unit = kwargs["timeunit"][1]  # E.g. 'minutes'
         value = int(kwargs['timeunit'][0])  # E.g. 10
 
         for j_lower in range(len(self.data)):
-            j_upper = j_lower + self.max_encoder_length
+            j_upper = j_lower + self.metadata['max-encoder-length']
 
             if j_upper > (len(self.data) - 1):
                 break
