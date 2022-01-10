@@ -195,7 +195,7 @@ def main(args):
 
             os.remove(file)
 
-            trained_model = model.train_model(training, trained_model, **vars(args))
+            trained_model = model.train_model(training, trained_model)
 
             model.evaluate_model(trained_model, training, **vars(args))
 
@@ -220,6 +220,8 @@ def main(args):
                     c_model = model_class.generate_model(training)
 
                     trained_model = model_class.train_model(training, c_model, **vars(args))
+
+                model_class.evaluate_model(trained_model, training)
 
                 metadata_export_path = Path(main_config['output-path-model']).absolute() / f'{model_class.name}' / f'{model_id}'
 
