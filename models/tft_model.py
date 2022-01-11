@@ -111,8 +111,6 @@ class Tft(Model, ABC):
         if (self.main_config['wandb']) and (self.main_config['wandb-project'] is not None):
             logger = WandbLogger(project=self.main_config['wandb-project'])
 
-
-
         trainer = Trainer(
             max_epochs=kwargs['epochs'],
             gpus=self.metadata['gpus'],
@@ -122,6 +120,7 @@ class Tft(Model, ABC):
             weights_save_path=str(Path(__file__).parent.parent / 'out' / 'models' / 'tft' / f'{self.model_id}'),
             default_root_dir='',
             logger=logger,
+            enable_progress_bar=True
         )
 
         trainer.fit(
@@ -231,7 +230,8 @@ class Tft(Model, ABC):
 
     def evaluate_model(self, evaluated_model, dataset):
         """
-        Evaluates the model based on performance.
+        Evaluates the model based on performance
+        It generated a PDF that contains all plotted predictions of the given model.
 
         :param dataset: TimeSeriesDataSet
         :param evaluated_model: TemporalFusionTransformer
@@ -325,7 +325,7 @@ def read_metadata(configparser, **kwargs):
     :param configparser: The configparser that reads the file
     :param kwargs: Contains one argument if the model is being hyper-tuned
 
-    :return: dictonary of settings
+    :return: dictionary of settings
     """
     if configparser.get('model', 'name') == 'Tft':
         settings = {'min-encoder-length': eval(configparser.get('training', 'min-encoder-length')),
