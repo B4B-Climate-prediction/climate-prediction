@@ -64,9 +64,10 @@ def main(args):
     :return: dataset as csv file.
     """
     df = pd.read_csv(args.data, parse_dates=['Timestamp'])
-    
-    df['Timestamp'] = df[args.timestamp]
-    del df[args.timestamp]
+
+    if 'Timestamp' not in df.columns:
+        df['Timestamp'] = df[args.timestamp]
+        del df[args.timestamp]
 
     df.sort_values(by='Timestamp', inplace=True)
     df = df.resample(args.resample, on='Timestamp').median()
