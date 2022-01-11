@@ -128,7 +128,7 @@ def read_main_config():
     configparser = ConfigParser()
     configparser.read(Path(__file__).parent.parent.absolute() / 'config.cfg')
 
-    return {
+    config = {
         'wandb': str(configparser.get(section='wandb', option='wandb')).lower() == 'true',
         'wandb-key': configparser.get(section='wandb', option='wandb-key'),
         'wandb-project': configparser.get(section='wandb', option='wandb-project'),
@@ -138,3 +138,21 @@ def read_main_config():
         'output-path-predictions': configparser.get(section='output', option='output-path-predictions'),
         'model-configs': configparser.get(section='input', option='input-model-configs')
     }
+
+    create_dirs_if_not_exists(
+        paths=[
+            config['output-path-data'],
+            config['output-path-model'],
+            config['output-path-predictions']
+        ]
+    )
+
+    return config
+
+
+def create_dirs_if_not_exists(paths):
+    for path in paths:
+        final_path = str((Path(__file__).parent.parent / path).absolute())
+
+        if not os.path.isdir(final_path):
+            os.makedirs(final_path)
