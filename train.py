@@ -16,7 +16,9 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 import pandas as pd
+
 import wandb
+from ExtendAction import ExtendAction
 
 from utils import config_reader
 
@@ -31,6 +33,7 @@ def parse_args():
     :return: argument-parser
     """
     parser = ArgumentParser(add_help=True)
+    parser.register('action', 'extend2', ExtendAction)
 
     parser.add_argument(
         '-d', '--data',
@@ -41,7 +44,7 @@ def parse_args():
 
     parser.add_argument(
         '-m', '--model',
-        action='extend',
+        action='extend2',
         nargs='*',
         default=[],
         help='Model file paths, must be a (.?) file. If specified this model will be trained'
