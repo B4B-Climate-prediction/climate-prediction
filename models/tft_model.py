@@ -1,7 +1,6 @@
 """A pytorch implementation to train, load & predict a forecasting model"""
 
 import os
-import pickle
 import shutil
 
 import pandas as pd
@@ -19,6 +18,8 @@ import glob
 
 from model import Model
 from utils import config_reader
+
+main_config = config_reader.read_main_config()
 
 
 class Tft(Model, ABC):
@@ -119,7 +120,7 @@ class Tft(Model, ABC):
             gradient_clip_val=self.metadata['gradient-clip-val'],
             limit_train_batches=self.metadata['limit-train-batches'],
             callbacks=[early_stop_callback],
-            weights_save_path=str(Path(__file__).parent.parent / 'out' / 'models' / 'tft' / f'{self.model_id}'),
+            weights_save_path=str((Path(__file__).parent.parent / main_config['output-path-model'] / 'tft' / f'{self.model_id}').absolute()),
             default_root_dir='',
             logger=logger,
         )
@@ -219,8 +220,8 @@ class Tft(Model, ABC):
         best_model_path = 'hyp_tuning' + "/trial_" + str(study.best_trial.number)
         list_of_files = glob.glob(best_model_path)  # * means all if need specific format then *.csv
         latest_file = max(list_of_files, key=os.path.getctime)
-        dst_path = str(
-            Path(__file__).parent.parent / 'out' / 'models' / 'tft' / str(self.metadata['id']) / 'checkpoints')
+        dst_path = str((
+            Path(__file__).parent.parent / main_config['output-path-model'] / 'tft' / str(self.metadata['id']) / 'checkpoints').absolute())
         shutil.move(latest_file, dst_path)
         shutil.rmtree('hyp_tuning')
 

@@ -12,7 +12,6 @@ command-arguments:
 import importlib
 import inspect
 import os
-import sys
 import uuid
 
 import pandas as pd
@@ -47,7 +46,7 @@ def parse_args():
         action='extend',
         nargs='*',
         default=[],
-        help='Model file paths, must be a (.?) file. If specified this model will be trained'
+        help='Model ID(s)'
     )
 
     parser.add_argument(
@@ -147,14 +146,26 @@ def main(args):
     :return: Nothing
     """
     global metadata, weights_file
-    df_path = str(Path(__file__).parent / 'out' / 'datasets' / args.data)
+    df_path = str((Path(__file__).parent / main_config['output-path-data'] / args.data).absolute())
     df = pd.read_csv(df_path, parse_dates=['Timestamp'])
 
     created_models = []
     files = []
 
-    for model_dir in args.model:
-        p = Path(__file__).parent / model_dir
+    for model_id in args.model:
+        p = (Path(__file__).parent / main_config['output-path-model']).absolute()
+
+        for model_type in os.listdir(p):
+            p_type = p / model_type
+            for model_id_ in os.listdir(p_type):
+                if model_id == model_id_:
+                    # Found correct directory
+                    p = p / model_type / model_id / 'checkpoints'
+                    break
+            else:
+                continue
+            break
+
         for file in os.listdir(p):
             if file.endswith('.cfg') & file.startswith('metadata'):
                 metadata = config_reader.read_metadata(p / file, loaded_models=model_classes)
@@ -188,7 +199,7 @@ def main(args):
             files.append(weights_file)
 
         else:
-            print(f"Metadata file is invalid. Directory: {model_dir}")
+            print(f"Metadata file is invalid. Model: {model_id}")
             quit(103)
             break
 
@@ -209,20 +220,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    models = []
-
-    for i in range(1, len(sys.argv)):
-        arg = sys.argv[i]
-
-        if arg.startswith('-') | arg.startswith('--'):
-            break
-
-        models.append(arg)
-
-    # search models in folder
-    package_dir = Path(__file__).parent / 'models'
-
-    c = importlib.import_module(f"{package_dir}")
+    c = importlib.import_module('models')
 
     for name_local in dir(c):
         if inspect.isclass(getattr(c, name_local)):

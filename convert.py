@@ -12,6 +12,9 @@ import uuid
 import pandas as pd
 from pathlib import Path
 from argparse import ArgumentParser
+from utils import config_reader
+
+main_config = config_reader.read_main_config()
 
 
 def parse_args():
@@ -79,7 +82,7 @@ def main(args):
     if name is None:
         name = f'dataset-{uuid.uuid4()}'
 
-    path = str(Path(__file__).parent / 'out' / 'datasets' / f'{name}.csv')
+    path = str((Path(__file__).parent / main_config['output-path-data'] / f'{name}.csv').absolute())
     df.to_csv(path, index=False)
 
 
