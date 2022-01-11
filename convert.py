@@ -8,9 +8,9 @@ Command-arguments:
     -n [--NAME]: Name of the exported file
 """
 
+import uuid
 import pandas as pd
 from pathlib import Path
-from datetime import datetime
 from argparse import ArgumentParser
 
 
@@ -77,8 +77,7 @@ def main(args):
 
     name = args.name
     if name is None:
-        time = datetime.now().strftime('%H%M%S')
-        name = f'{time}-{args.resample}'
+        name = f'dataset-{uuid.uuid4()}'
 
     path = str(Path(__file__).parent / 'out' / 'datasets' / f'{name}.csv')
     df.to_csv(path, index=False)
