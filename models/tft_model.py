@@ -141,17 +141,19 @@ class Tft(Model, ABC):
         :return: dictionary of predicted targets
         """
 
-        targets = self.metadata['targets']
-
-        unit = kwargs["timeunit"][1]  # E.g. 'minutes'
-        value = int(kwargs['timeunit'][0])  # E.g. 10
+        # Constants for this prediction
+        timeunit = kwargs["timeunit"][1]                                    # 'minutes'
+        time_value = int(kwargs['timeunit'][0])                             # 10
+        targets = self.metadata['targets']                                  # 'Temperature', 'Humidity'
+        max_encoder_length = self.metadata['max-encoder-length']            # 24
+        max_prediction_length = self.metadata['max-prediction-length']      # 1
 
         result = {}
         for target in targets:
-            result[target] = [None for _ in range(self.metadata['max-encoder-length'])]
+            result[target] = [None for _ in range(max_encoder_length)]
 
         for j_lower in range(len(self.data)):
-            j_upper = j_lower + self.metadata['max-encoder-length']
+            j_upper = j_lower + max_encoder_length
 
             if j_upper > (len(self.data) - 1):
                 break
@@ -161,8 +163,8 @@ class Tft(Model, ABC):
             last_data = encoder_data[lambda x: x.Index == x.Index.max()].copy()
 
             decoder_data = pd.concat(
-                [last_data.assign(Timestamp=lambda y: y.Timestamp + pd.DateOffset(**{unit: value * i})) for i in
-                 range(1, self.metadata['max-prediction-length'] + 1)],
+                [last_data.assign(Timestamp=lambda y: y.Timestamp + pd.DateOffset(**{timeunit: time_value * i})) for i in
+                 range(1, max_prediction_length + 1)],
                 ignore_index=True
             )
 
