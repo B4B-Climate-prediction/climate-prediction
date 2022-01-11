@@ -135,5 +135,6 @@ def read_main_config():
         'wandb-team': configparser.get(section='wandb', option='wandb-team'),
         'output-path-data': configparser.get(section='output', option='output-path-data'),
         'output-path-model': configparser.get(section='output', option='output-path-model'),
+        'output-path-predictions': configparser.get(section='output', option='output-path-predictions'),
         'model-configs': configparser.get(section='input', option='input-model-configs')
     }

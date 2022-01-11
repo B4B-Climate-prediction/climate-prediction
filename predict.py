@@ -13,6 +13,7 @@ import importlib
 import inspect
 import os
 import sys
+import uuid
 
 import pandas as pd
 from pathlib import Path
@@ -22,6 +23,7 @@ import matplotlib.pyplot as plt
 from utils import config_reader
 
 model_classes = []
+main_config = config_reader.read_main_config()
 
 
 def parse_args():
@@ -101,19 +103,34 @@ def find_model(name):
             return model
 
 
-def plot_predictions(observed, predicted):
+def generate_figure(df, targets, model):
     """
     Plots the prediction
 
-    :param observed: the observed data-points in the dataset
-    :param predicted: the generated data-points from the model
+    :param df: all data-points in the dataset
+    :param targets: list of targets used
+    :param model: current model
 
-    :returns: nothing
+    :returns: generated figure
     """
-    plt.plot(observed, label="Observed")
-    plt.plot(predicted, label="Predicted")
-    plt.legend()
-    plt.show()
+    tot = len(targets)
+    cols = 2
+    rows = tot // cols
+    rows += tot % cols
+    pos = range(1, tot + 1)
+
+    fig: plt.Figure = plt.figure(1)
+    fig.suptitle(model.metadata["model"])
+    for j, target in enumerate(targets):
+        column_prediction_name = f'{model.metadata["id"]}-{target}'
+
+        ax: plt.Axes = fig.add_subplot(rows, cols, pos[j])
+        ax.set_title(f'{target}')
+        ax.plot(df[target], label='Observed')
+        ax.plot(df[column_prediction_name], label='Predicted')
+        ax.legend()
+
+    return fig
 
 
 def main(args):
@@ -181,15 +198,14 @@ def main(args):
         trained_model = model.load_model(file, **vars(args))
 
         predictions = model.predict(trained_model, **vars(args))
+        targets = model.metadata['targets']
 
-        for target in model.metadata['targets']:
+        for target in targets:
             column_prediction_name = f'{model.metadata["id"]}-{target}'
             df[column_prediction_name] = predictions[target]
 
-            plot_predictions(
-                observed=df[target],
-                predicted=df[column_prediction_name]
-            )
+        fig = generate_figure(df, targets, model)
+        fig.savefig(str((Path(__file__).parent / main_config['output-path-predictions'] / f'prediction-{uuid.uuid4()}.png').absolute()))
 
 
 if __name__ == '__main__':
