@@ -61,7 +61,9 @@ def main(args):
 
     It resamples the timestamps and generates indexes.
 
-    :return: dataset as csv file.
+    Generates a new csv file with the applied transformations.
+
+    :return: nothing
     """
     df = pd.read_csv(args.data, parse_dates=['Timestamp'])
 

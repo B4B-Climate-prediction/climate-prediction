@@ -1,5 +1,6 @@
 """
-A script that generates config files for the models
+A script that generates config files for the models.
+The generated config files will be stored in the 'configs' folder.
 
 Command-arguments:
     [MODEL_NAMES]
@@ -27,7 +28,7 @@ def parse_args():
     parser.add_argument(
         '-hy', '--hyper',
         action='store_true',
-        help='specifies if this model is meant to be hypertuned'
+        help='specifies if this model is meant to be hyper-tuned'
     )
 
     for model in model_classes:

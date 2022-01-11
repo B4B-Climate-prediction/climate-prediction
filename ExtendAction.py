@@ -1,7 +1,10 @@
+"""
+Used as args support. Not used as a standalone runnable script.
+"""
 import argparse
 
-class ExtendAction(argparse.Action):
 
+class ExtendAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         items = getattr(namespace, self.dest) or []
         items.extend(values)
