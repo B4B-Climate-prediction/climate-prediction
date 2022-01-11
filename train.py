@@ -141,7 +141,7 @@ def main(args):
     else:
         print('Not using WandB')
 
-    df_path = str(Path(__file__).parent / 'out' / 'datasets' / args.data)
+    df_path = str((Path(__file__).parent / main_config['output-path-data'] / args.data).absolute())
     df = pd.read_csv(df_path, parse_dates=['Timestamp'])
 
     if len(args.model) != 0:
@@ -245,9 +245,7 @@ def main(args):
 
 if __name__ == '__main__':
     # search models in folder
-    package_dir = Path(__file__).parent / 'models'
-
-    c = importlib.import_module(f"{package_dir}")
+    c = importlib.import_module('models')
 
     for name_local in dir(c):
         if inspect.isclass(getattr(c, name_local)):
