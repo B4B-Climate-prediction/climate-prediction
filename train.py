@@ -18,9 +18,7 @@ from pathlib import Path
 import pandas as pd
 
 import wandb
-from ExtendAction import ExtendAction
-
-from utils import config_reader
+from utils import ExtendAction, config_reader
 
 model_classes = []
 main_config = config_reader.read_main_config()
