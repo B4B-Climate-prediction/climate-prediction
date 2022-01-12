@@ -256,7 +256,7 @@ class Tft(Model, ABC):
 
         # Define export path for PDF report
         filename = self.name + "-" + str(self.model_id) + ".pdf"
-        file_path = "reports" + "/" + filename
+        file_path = str((Path(__file__).parent.parent / main_config['output-path-reports'] / filename).absolute())
 
         # Save figures into one single PDF file
         pp = PdfPages(file_path)
