@@ -223,7 +223,7 @@ def main(args):
 
                 model_class.evaluate_model(trained_model, training)
 
-                metadata_export_path = Path(main_config['output-path-model']).absolute() / f'{model_class.name}' / f'{model_id}'
+                metadata_export_path = Path(main_config['output-path-model']) / f'{model_class.name}' / f'{model_id}'
 
                 # Model output changes when WandB is enabled as logger
                 if (main_config['wandb']) and (main_config['wandb-project'] is not None):

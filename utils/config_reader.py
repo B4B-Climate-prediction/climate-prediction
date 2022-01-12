@@ -88,7 +88,8 @@ def export_metadata(model, df, pl):
 
     model.write_metadata(configparser)
 
-    with open(Path(pl) / f'metadata-{datetime.now().strftime("%H%M%S")}-{model.model_id}.cfg', 'w') as configfile:
+    path = str((pl / f'metadata-{datetime.now().strftime("%H%M%S")}-{model.model_id}.cfg').absolute())
+    with open(path, 'w') as configfile:
         configparser.write(configfile)
 
 
