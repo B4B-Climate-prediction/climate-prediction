@@ -118,7 +118,7 @@ class Tft(Model, ABC):
             gradient_clip_val=self.metadata['gradient-clip-val'],
             limit_train_batches=self.metadata['limit-train-batches'],
             callbacks=[early_stop_callback],
-            weights_save_path=str((Path(__file__).parent.parent / main_config['output-path-model'] / 'tft' / f'{self.model_id}').absolute()),
+            weights_save_path=str((Path(__file__).parent.parent / main_config['output-path-model'] / self.name / f'{self.model_id}').absolute()),
             default_root_dir='',
             logger=logger,
             enable_progress_bar=True
@@ -220,7 +220,7 @@ class Tft(Model, ABC):
         list_of_files = glob.glob(best_model_path)  # * means all if need specific format then *.csv
         latest_file = max(list_of_files, key=os.path.getctime)
         dst_path = str((
-            Path(__file__).parent.parent / main_config['output-path-model'] / 'tft' / str(self.metadata['id']) / 'checkpoints').absolute())
+            Path(__file__).parent.parent / main_config['output-path-model'] / self.name / str(self.metadata['id']) / 'checkpoints').absolute())
         shutil.move(latest_file, dst_path)
         shutil.rmtree('hyp_tuning')
 

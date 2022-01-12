@@ -88,7 +88,8 @@ def export_metadata(model, df, pl):
 
     model.write_metadata(configparser)
 
-    with open(Path(pl) / f'metadata-{datetime.now().strftime("%H%M%S")}-{model.model_id}.cfg', 'w') as configfile:
+    path = str((pl / f'metadata-{datetime.now().strftime("%H%M%S")}-{model.model_id}.cfg').absolute())
+    with open(path, 'w') as configfile:
         configparser.write(configfile)
 
 
@@ -135,14 +136,16 @@ def read_main_config():
         'wandb-team': configparser.get(section='wandb', option='wandb-team'),
         'output-path-data': configparser.get(section='output', option='output-path-data'),
         'output-path-model': configparser.get(section='output', option='output-path-model'),
+        'output-path-reports': configparser.get(section='output', option='output-path-reports'),
         'output-path-predictions': configparser.get(section='output', option='output-path-predictions'),
         'model-configs': configparser.get(section='input', option='input-model-configs')
     }
 
-    create_dirs_if_not_exists(
+    _create_dirs_if_not_exists(
         paths=[
             config['output-path-data'],
             config['output-path-model'],
+            config['output-path-reports'],
             config['output-path-predictions']
         ]
     )
@@ -150,7 +153,7 @@ def read_main_config():
     return config
 
 
-def create_dirs_if_not_exists(paths):
+def _create_dirs_if_not_exists(paths):
     for path in paths:
         final_path = str((Path(__file__).parent.parent / path).absolute())
 
