@@ -221,8 +221,6 @@ def main(args):
 
                     trained_model = model_class.train_model(training, c_model, **vars(args))
 
-                model_class.evaluate_model(trained_model, training)
-
                 metadata_export_path = Path(main_config['output-path-model']) / f'{model_class.name}' / f'{model_id}'
 
                 # Model output changes when WandB is enabled as logger
