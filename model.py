@@ -58,7 +58,7 @@ class Model:
         """
         raise NotImplementedError()
 
-    def tune_hyper_parameter(self, dataset, **kwargs):
+    def tune_hyper_parameter(self, dataset, **kwargs) -> Any:
         """
         Hyper tune different models
 

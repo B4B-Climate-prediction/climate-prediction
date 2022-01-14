@@ -118,7 +118,8 @@ class Tft(Model, ABC):
             gradient_clip_val=self.metadata['gradient-clip-val'],
             limit_train_batches=self.metadata['limit-train-batches'],
             callbacks=[early_stop_callback],
-            weights_save_path=str((Path(__file__).parent.parent / main_config['output-path-model'] / self.name / f'{self.model_id}').absolute()),
+            weights_save_path=str((Path(__file__).parent.parent / main_config[
+                'output-path-model'] / self.name / f'{self.model_id}').absolute()),
             default_root_dir='',
             logger=logger,
             enable_progress_bar=True
@@ -142,45 +143,38 @@ class Tft(Model, ABC):
         """
 
         # Constants for this prediction
-        timeunit = kwargs["timeunit"][1]                                    # 'minutes'
-        time_value = int(kwargs['timeunit'][0])                             # 10
-        targets = self.metadata['targets']                                  # 'Temperature', 'Humidity'
-        max_encoder_length = self.metadata['max-encoder-length']            # 24
-        max_prediction_length = self.metadata['max-prediction-length']      # 1
+        timeunit = kwargs["timeunit"][1]  # 'minutes'
+        time_value = int(kwargs['timeunit'][0])  # 10
+        targets = self.metadata['targets']  # 'Temperature', 'Humidity'
+        max_encoder_length = self.metadata['max-encoder-length']  # 24
+        max_prediction_length = self.metadata['max-prediction-length']  # 1
 
-        result = {}
-        for target in targets:
-            result[target] = [None for _ in range(max_encoder_length)]
+        encoder_data = self.data[lambda x: x.Index > (x.Index.max() - max_encoder_length)]
 
-        for j_lower in range(len(self.data)):
-            j_upper = j_lower + max_encoder_length
+        last_data = encoder_data[lambda x: x.Index == x.Index.max()].copy()
 
-            if j_upper > (len(self.data) - 1):
-                break
+        decoder_data = pd.concat(
+            [last_data.assign(Timestamp=lambda y: y.Timestamp + pd.DateOffset(**{timeunit: time_value * i})) for i in
+             range(1, max_prediction_length + 1)],
+            ignore_index=True
+        )
 
-            encoder_data = self.data[j_lower:j_upper]
+        # add time index consistent with "data"
+        decoder_data["Index"] += encoder_data["Index"].max() + decoder_data.index + 1 - decoder_data["Index"].min()
 
-            last_data = encoder_data[lambda x: x.Index == x.Index.max()].copy()
+        # combine encoder and decoder data
+        new_prediction_data = pd.concat([encoder_data, decoder_data], ignore_index=True)
 
-            decoder_data = pd.concat(
-                [last_data.assign(Timestamp=lambda y: y.Timestamp + pd.DateOffset(**{timeunit: time_value * i})) for i in
-                 range(1, max_prediction_length + 1)],
-                ignore_index=True
-            )
+        raw_predictions = model_.predict(new_prediction_data)
 
-            # add time index consistent with "data"
-            decoder_data["Index"] += encoder_data["Index"].max() + decoder_data.index + 1 - decoder_data["Index"].min()
+        results = {"Timestamp": decoder_data["Timestamp"].values}
 
-            # combine encoder and decoder data
-            new_prediction_data = pd.concat([encoder_data, decoder_data], ignore_index=True)
+        for i in range(len(targets)):
+            target = targets[i]
 
-            raw_predictions = model_.predict(new_prediction_data)
+            results[target] = raw_predictions[i][0].numpy()
 
-            for i, target in enumerate(targets):
-                prediction = raw_predictions[i][0].item()
-                result[target].append(prediction)
-
-        return result
+        return results
 
     def tune_hyper_parameter(self, dataset, **kwargs):  # Add clean up after the creation of the best trial!
         """
@@ -220,7 +214,8 @@ class Tft(Model, ABC):
         list_of_files = glob.glob(best_model_path)  # * means all if need specific format then *.csv
         latest_file = max(list_of_files, key=os.path.getctime)
         dst_path = str((
-            Path(__file__).parent.parent / main_config['output-path-model'] / self.name / str(self.metadata['id']) / 'checkpoints').absolute())
+                               Path(__file__).parent.parent / main_config['output-path-model'] / self.name / str(
+                           self.metadata['id']) / 'checkpoints').absolute())
         shutil.move(latest_file, dst_path)
         shutil.rmtree('hyp_tuning')
 
