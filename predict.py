@@ -121,11 +121,9 @@ def generate_figure(df, targets, model):
     fig: plt.Figure = plt.figure(1)
     fig.suptitle(model.metadata["model"])
     for j, target in enumerate(targets):
-        column_prediction_name = f'{model.metadata["id"]}-{target}'
+        column_prediction_name = f'{target}'
 
         ax: plt.Axes = fig.add_subplot(rows, cols, pos[j])
-        ax.set_title(f'{target}')
-        ax.plot(df[target], label='Observed')
         ax.plot(df[column_prediction_name], label='Predicted')
         ax.legend()
 
@@ -209,14 +207,26 @@ def main(args):
         trained_model = model.load_model(file, **vars(args))
 
         predictions = model.predict(trained_model, **vars(args))
-        targets = model.metadata['targets']
 
-        for target in targets:
-            column_prediction_name = f'{model.metadata["id"]}-{target}'
-            df[column_prediction_name] = predictions[target]
+        columns = ['Timestamp']
 
-        fig = generate_figure(df, targets, model)
-        fig.savefig(str((Path(__file__).parent / main_config['output-path-predictions'] / f'prediction-{uuid.uuid4()}.png').absolute()))
+        for target in model.metadata['targets']:
+            columns.append(target)
+
+        dataframe = pd.DataFrame.from_dict(predictions, orient='columns').reset_index()
+
+        dataframe.to_csv(
+            str((Path(__file__).parent / main_config['output-path-predictions'] / f'prediction-{uuid.uuid4()}.csv')))
+
+        # TODO: Maybe future
+        # targets = model.metadata['targets']
+        #
+        # for target in targets:
+        #     column_prediction_name = f'{model.metadata["id"]}-{target}'
+        #     df[column_prediction_name] = predictions[target]
+        #
+        # fig = generate_figure(dataframe, targets, model)
+        # fig.savefig(str((Path(__file__).parent / main_config['output-path-predictions'] / f'prediction-{uuid.uuid4()}.png').absolute()))
 
 
 if __name__ == '__main__':
