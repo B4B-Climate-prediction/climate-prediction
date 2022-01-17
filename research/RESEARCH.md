@@ -37,13 +37,7 @@ The following sub-questions can be derived:
 * Time Series Analysis and Forecasting with Machine Learning: https://www.youtube.com/watch?v=AvG7czmeQfs
 * SINDy: https://arxiv.org/abs/2004.02322
 
-## ToDo
-
-* Talk with Baldiri for sharing a dataset to perform the research in this field.
-* Setup a meeting with Niel Yorke from TUD
-<br/><br/>
 # Our Answer
-
 The main question our team had to answer was the following: __“How could we predict future measurements concerning the internal climate of a building that can be used by the building automation controller and independently as prediction.”__
 
 To answer this question, a set of subquestions were formulated:
