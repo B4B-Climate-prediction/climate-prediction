@@ -265,7 +265,3 @@ if __name__ == '__main__':
             print(f"{Model.name} model has been loaded in")
 
     main(parse_args())
-
-# Check names of the loaded models with the corresponding folder
-# Load metadata into train.py and predict.py for checking
-# Checking the folder that contains the trained model/weights .cktp
