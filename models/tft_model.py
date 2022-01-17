@@ -98,9 +98,12 @@ class Tft(Model, ABC):
             reduce_on_plateau_patience=self.metadata['reduce-on-plateau-patience']
         )
 
-    def train_model(self, dataset, created_model, **kwargs):
+    def train_model(self, created_model, dataset, **kwargs):
         """
         Trains a TemporalFusionTransformer
+
+        :param created_model: model to be trained.
+        :param dataset: TimeSeriesDataSet
 
         :return: A trainer object
         """
@@ -135,7 +138,7 @@ class Tft(Model, ABC):
 
     def predict(self, model_, **kwargs):
         """
-        Predicts X amount of time-steps into the future.
+        Predicts [prediction-length] time steps into the future.
 
         :param model_: trained model
 
@@ -229,8 +232,8 @@ class Tft(Model, ABC):
         Evaluates the model based on performance
         It generated a PDF that contains all plotted predictions of the given model.
 
-        :param dataset: TimeSeriesDataSet
         :param evaluated_model: TemporalFusionTransformer
+        :param dataset: TimeSeriesDataSet
 
         :return: Nothing
         """

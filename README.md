@@ -12,4 +12,4 @@ Make sure all dependencies work in PowerShell/Terminal before continuing.
 3. Install requirements with: `pip install -r requirements.txt`
 
 ## Usage
-See the manual. For examples see this [Colab Notebook](https://colab.research.google.com/drive/17hVvRTiqt9mxTbp2X3z7_KNIE76FbVZc?usp=sharing).
+RTFM. For examples see this [Colab Notebook](https://colab.research.google.com/drive/17hVvRTiqt9mxTbp2X3z7_KNIE76FbVZc?usp=sharing).
