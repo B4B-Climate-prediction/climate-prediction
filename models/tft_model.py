@@ -367,7 +367,7 @@ def read_metadata(configparser, **kwargs):
 
 def generate_config(configparser, **kwargs):
     """
-    Generates a example model-config for the generate_model.py
+    Generates a example model-config for the generate_model_config.py
 
     :param configparser: The configparser that writes to the file
     :param kwargs: Contains if the model is being hyper-tuned
