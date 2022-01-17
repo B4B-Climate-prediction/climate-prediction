@@ -231,7 +231,11 @@ def main(args):
 
                 config_reader.export_metadata(model_class, df, metadata_export_path)
 
-                model_class.evaluate_model(trained_model, training)
+                try:
+                    model_class.evaluate_model(trained_model, training)
+                except:
+                    print("Could not evaluate model, check if evaluate_model can be loaded in and predict correctly.")
+
             else:
                 print(f"Couldn't find model: {config['model']}")
                 quit(102)
