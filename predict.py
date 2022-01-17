@@ -102,16 +102,19 @@ def find_model(name):
             return model
 
 
-def generate_figure(df, targets, model):
+def generate_figure(predicted, data, targets, input_length):
     """
     Plots the prediction
 
-    :param df: all data-points in the dataset
+    :param predicted: predicted values of targets
+    :param data: all data-points in the dataset
     :param targets: list of targets used
-    :param model: current model
+    :param input_length: amount of rows used for the prediction
 
     :returns: generated figure
     """
+    data = data[lambda x: x.Index > (x.Index.max() - input_length)]
+
     tot = len(targets)
     cols = 2
     rows = tot // cols
@@ -119,12 +122,17 @@ def generate_figure(df, targets, model):
     pos = range(1, tot + 1)
 
     fig: plt.Figure = plt.figure(1)
-    fig.suptitle(model.metadata["model"])
+    fig.suptitle('Predictions')
     for j, target in enumerate(targets):
-        column_prediction_name = f'{target}'
-
         ax: plt.Axes = fig.add_subplot(rows, cols, pos[j])
-        ax.plot(df[column_prediction_name], label='Predicted')
+        ax.plot(data['Timestamp'], data[target], label='Observed')
+        ax.plot(predicted['Timestamp'], predicted[target], label='Predicted')
+
+        ax.set(xticklabels=[])
+        ax.set(title=target)
+        ax.set(xlabel=None)
+        ax.tick_params(bottom=False)
+
         ax.legend()
 
     return fig
@@ -209,24 +217,20 @@ def main(args):
         predictions = model.predict(trained_model, **vars(args))
 
         columns = ['Timestamp']
+        targets = model.metadata['targets']
 
-        for target in model.metadata['targets']:
+        for target in targets:
             columns.append(target)
 
         dataframe = pd.DataFrame.from_dict(predictions, orient='columns').reset_index()
 
-        dataframe.to_csv(
-            str((Path(__file__).parent / main_config['output-path-predictions'] / f'prediction-{uuid.uuid4()}.csv')))
+        path = (Path(__file__).parent / main_config['output-path-predictions'] / f'prediction-{uuid.uuid4()}').absolute()
+        os.mkdir(str(path))
 
-        # TODO: Maybe future
-        # targets = model.metadata['targets']
-        #
-        # for target in targets:
-        #     column_prediction_name = f'{model.metadata["id"]}-{target}'
-        #     df[column_prediction_name] = predictions[target]
-        #
-        # fig = generate_figure(dataframe, targets, model)
-        # fig.savefig(str((Path(__file__).parent / main_config['output-path-predictions'] / f'prediction-{uuid.uuid4()}.png').absolute()))
+        dataframe.to_csv(str(path / 'dataframe.csv'), index=False)
+
+        fig = generate_figure(dataframe, df, targets, model.metadata['max-encoder-length'])
+        fig.savefig(str(path / 'diagrams.png'))
 
 
 if __name__ == '__main__':
