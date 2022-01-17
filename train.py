@@ -146,8 +146,20 @@ def main(args):
         created_models = []
         files = []
 
-        for model_dir in args.model:
-            p = Path(__file__).parent.absolute() / model_dir
+        for model_id in args.model:
+            p = (Path(__file__).parent / main_config['output-path-model']).absolute()
+
+            for model_type in os.listdir(p):
+                p_type = p / model_type
+                for model_id_ in os.listdir(p_type):
+                    if model_id == model_id_:
+                        # Found correct directory
+                        p = p / model_type / model_id / 'checkpoints'
+                        break
+                else:
+                    continue
+                break
+
             for file in os.listdir(p):
                 if file.endswith('.cfg') & file.startswith('metadata'):
                     metadata = config_reader.read_metadata(p / file, loaded_models=model_classes)
@@ -180,7 +192,7 @@ def main(args):
                 created_models.append(model_class)
                 files.append(weights_file)
             else:
-                print(f"Cannot load in metadata. Directory: {model_dir}")
+                print(f"Cannot load in metadata. Directory: {model_id}")
                 quit(103)
                 break
 
@@ -194,7 +206,7 @@ def main(args):
 
             os.remove(file)
 
-            trained_model = model.train_model(training, trained_model)
+            trained_model = model.train_model(trained_model, training, **vars(args))
 
             model.evaluate_model(trained_model, training)
 
@@ -218,7 +230,7 @@ def main(args):
                 else:
                     c_model = model_class.generate_model(training)
 
-                    trained_model = model_class.train_model(training, c_model, **vars(args))
+                    trained_model = model_class.train_model(c_model, training, **vars(args))
 
                 metadata_export_path = Path(main_config['output-path-model']) / f'{model_class.name}' / f'{model_id}'
 
