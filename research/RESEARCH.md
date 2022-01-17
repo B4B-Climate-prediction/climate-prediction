@@ -42,8 +42,7 @@ The following sub-questions can be derived:
 * Talk with Baldiri for sharing a dataset to perform the research in this field.
 * Setup a meeting with Niel Yorke from TUD
 <br/><br/>
-# Answers to subquestions
-Multivariate timeseries uses multiple timeseries input to make a forecast of a specific timeseries.
+# Our Answer
 
 The main question our team had to answer was the following: __“How could we predict future measurements concerning the internal climate of a building that can be used by the building automation controller and independently as prediction.”__
 
@@ -58,11 +57,15 @@ To answer this question, a set of subquestions were formulated:
 After a period of 10 weeks working on the project, we we're able to answer 5 of the 6 subquestions:
 
 1. After discussing this question with our mentor, we concluded that these 3 measurements are the most important to predict when it comes to an internal climate: Temprature, Humidity and CO2 values (Or the overal air composition). These being the 3 main factors which determine if the climate is percieved as "pleasant" or not by the visitors of the building. 
-2. Since we are working with a TimeSeries, the predicitons should look like a signal. At a certain amount of time intervals in the future, which the model is trained with, there should be a prediction of temprature, humidity and CO2 percentage in the air.
-3. The current datasets we have used for internal climates all contained the target (temp, humidity, CO2) values. There we're a lot of datasets, and we haven't managed to boil it down to a dataset that is 'best'. To resolve this problem, we have made our model as modular as possible, so all kinds of timeseries data can be used to train it.
+2. Since we are working with a TimeSeries, the predicitons should look like a signal. At a certain amount of time intervals in the future, which the model is trained with, there should be a prediction of temprature, humidity and CO2 percentage in the air. This will give the controller the ability to adjust the indoor climate based on the predicitons made.
+3. The current datasets we have used for internal climates all contained the target (temp, humidity, CO2) values. There we're a lot of datasets, and we haven't managed to boil it down to a dataset that is 'best'. To resolve this problem, we have made our model as modular as possible by taking a script approach and something of an 'open ai gym enviroment' approach with our model class. See the manual and scripts for more info.
 4. Unfortunately we haven't had the time to research this, so we do not have an answer to this question
 5. We have used the TFT model, which we think is currently the best model for TimeSeries prediction out there. See the rest of the research.md file for a deep dive into the Temporal Fusion Transformer
 6. We have setup multiple python scripts with a explanitory guide on how to setup your device to use these scripts. This way a technical person with limited AI knowledge can train his/her own model with different datasets if need be.
+    1. A generate csv script, to clean up and ready the dataset for usage.
+    2. A generate model config script, to create a config used to generate and train a model. This config can be adjusted before training. If need be you can adjust hyperparameters and other settings here.
+    3. A train script to train an actual modal. If you have specified it in the generate script, the train script can do automatic hyperparameter tuning.
+    4. A predict script. The predict script returns a csv with predicted values in future timestamps in a csv (how many is dependent on your cfg file).
 
 Now that the subquestions have been answered we can answer the main question: __“How could we predict future measurements concerning the internal climate of a building that can be used by the building automation controller and independently as prediction.”__
 
@@ -73,11 +76,11 @@ Future measurements concerning the internal climate of a building can be predict
 
 ## Introduction
 
-The objective of the B4B climate prediction team is to build/find and train a machine learning model that can predict the internal climate of a building. An important factor in this equation is time, since time is intertwined with a lot of variables like the amount of people that are in the building at any given time, or the seasons and thus the outside temprature. Thus Timeseries data has to be used to make acurate predictions of the future state of the building climate. Our predecessors tried to do this with the help of LSTM's, but have been unsucessfull in producing an acurate prediction model. After researching subquestion number 5 (Which ML algorithms should be used to perform prediction of these timeseries measurements?) Our team came across the Temporal Fusion Transformer. After a few test runs with the model we managed to create a good prediction model that could acurately predicit future timesteps, but the inner workings of this model were still unknown. This begs the following question: What is a TFT model, and how does it predict future Timesteps?
+Now we know what the project is all about, and what the project team has acomplished, we can explain what the Temporal Fusion Transformer is. An important factor in the equation is time, since time is intertwined with a lot of variables like the amount of people that are in the building at any given time, or the seasons and thus the outside temprature. Thus Timeseries data has to be used to make acurate predictions of the future state of the building climate. Our predecessors tried to do this with the help of LSTM's, but have been unsucessfull in producing an acurate prediction model. After researching subquestion number 5 (Which ML algorithms should be used to perform prediction of these timeseries measurements?) Our team came across the Temporal Fusion Transformer. After a few test runs with the model we managed to create a good prediction model that could acurately predicit future timesteps, but the inner workings of this model were still unknown. This begs the following question: What is a TFT model, and how does it predict future Timesteps? 
 
-For the forcast predictions we used a (at this time) state of the art model specifically build for TimeSeries predicitions, The Temporal Fusion Transformer. The TFT specializes on Multi-Horizon forcasting (a model capable of predicting multiple attributes at once) which is needed for the predicting a climate within a building, since the climate is defined by more than one variable. In this document, we will shortly discuss the architecture of this model. This document is not a replacement for the TFT paper. Please read and research the sources given if you require a full understanding of this model and how it operates.
+In short, The TFT specializes on Multi-Horizon forcasting (a model capable of predicting multiple attributes at once) which is needed for the predicting a climate within a building, since the climate is defined by more than one variable. Next to that it uses self-attention to take learn the temporal relationship of variables or targets within a Timeseries dataset. In this document, we will shortly discuss the architecture of this model. This document is not a replacement for the TFT paper. Please read and research the sources given if you require a full understanding of this model and how it operates.
 
-Below you can see the architecture of the TFT, with an explanation on how it works just below it.
+Below you can see the architecture of the TFT, with an explanation following shortly after it.
 
 ![](Img\Model_Architecture_tft.PNG)
 
