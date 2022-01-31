@@ -14,7 +14,6 @@ LICENSE
 .ipynb_checkpoints/
 __pycache__/
 wandb/
-out/
 reports/
 optuna/
 hyp_tuning/
