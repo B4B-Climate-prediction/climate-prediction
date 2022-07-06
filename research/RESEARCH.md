@@ -76,7 +76,7 @@ In short, The TFT specializes on Multi-Horizon forcasting (a model capable of pr
 
 Below you can see the architecture of the TFT, with an explanation following shortly after it.
 
-![](Img\Model_Architecture_tft.PNG)
+![](./Img/Model_Architecture_tft.PNG)
 
 The model can be divided into 5 layers:
 
@@ -96,7 +96,7 @@ In contrast with other time series forecasting architectures, the TFT is careful
 
 ## 3. Gating mechanisms
 
-![](Img\GRN.PNG)
+![](Img/GRN.PNG)
 
 *Figure 3, Gated Residual Network (GRN)*
 
@@ -139,7 +139,7 @@ Before we explain the loss function of the model, we first need to understand wh
 
 Quantile: a quantile defines a particular part of a data set. It determines how many values in a distribution are above or below a certain limit. For example, if you have a dataset of 15 points in a linear fasion, a line could be drawn on the 8th point. This line will then be the 50% quantile or the 0.5 quantile (See figure 2). 
 
-![](Img\Capture.PNG)
+![](Img/Capture.PNG)
 Figure 2
 
 Quantile regression loss function:
